@@ -292,11 +292,13 @@ function emptyState() {
   </div>`;
 }
 
-// The three-letter airport code saved with a place, e.g. "Boston (BOS)" or just "BOS"; '' if there isn't one.
+// The three-letter airport code for a place: the one saved with it, e.g. "Boston (BOS)" or just "BOS",
+// or else the city's only main airport (see airports.js); '' if Via can't be sure.
 function airportCode(place) {
   const detail = placeDetail(place);
   if (/^[a-z]{3}$/i.test(detail)) return detail.toUpperCase();
-  return /^[A-Z]{3}$/.test((place || '').trim()) ? place.trim() : '';
+  if (/^[A-Z]{3}$/.test((place || '').trim())) return place.trim();
+  return cityAirport(shortPlace(place));
 }
 
 // With `airportCodes`, a flight shows each airport code large with the city name underneath.
