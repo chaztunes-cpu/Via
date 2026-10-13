@@ -315,36 +315,54 @@ function ticketButton(b, cls) {
 }
 
 function heroCard(b) {
-  const t = typeOf(b), trip = tripById(b.tripId), underway = dep(b) <= new Date();
-  const meta = [
-    ['Date', fmtDay(dep(b))],
-    [t.label, [b.provider, b.number].filter(Boolean).join(' · ')],
-    ['Confirmation', b.confirmation, 'mono'],
-  ].filter((m) => m[1]);
+  const t = typeOf(b), underway = dep(b) <= new Date();
   const status = underway ? (b.arriveTime ? `Arrives ${fmtTime(b.arriveTime)}` : 'Underway') : countdown(b);
+  const meta = [
+    ['Date', esc(fmtDay(dep(b)))],
+    ['Type', `<span class="hero-type">${icon(t.icon, 15)}${t.label}</span>`],
+    [t.provider, esc([b.provider, b.number].filter(Boolean).join(' · '))],
+  ].filter((m) => m[1]);
+  const ticket = filesFor(b.id).length ? ticketButton(b, 'glass') : '';
   return `<article class="hero" style="${typeVars(b.type)}">
     <div class="hero-top">
-      <span class="hero-label">${underway ? 'Happening now' : 'Next departure'}${trip ? ` · ${esc(trip.name)}` : ''}</span>
+      <span class="hero-label">${underway ? 'Happening now' : 'Next departure'}</span>
       <span class="pill">${status}</span>
     </div>
     <a class="route hero-route" href="#/booking/${b.id}">${routeHTML(b)}</a>
-    ${meta.length ? `<div class="hero-meta">${meta.map(([k, v, cls]) => `<div><span>${esc(k)}</span><b class="${cls || ''}">${esc(v)}</b></div>`).join('')}</div>` : ''}
-    <div class="hero-actions">${ticketButton(b, 'light')}<a class="btn glass" href="#/booking/${b.id}">Details</a></div>
+    <div class="hero-meta">${meta.map(([k, v]) => `<div><span>${esc(k)}</span><b>${v}</b></div>`).join('')}</div>
+    <div class="hero-actions">
+      <a class="btn light" href="#/booking/${b.id}">View booking ${icon('chevron-right', 18)}</a>
+      ${ticket}
+    </div>
   </article>`;
+}
+
+// The places a trip visits, leaving out where it starts (usually home).
+function destinations(bookings) {
+  const home = bookings[0].from, seen = [];
+  for (const b of bookings) {
+    if (!samePlace(b.to, home) && !seen.some((s) => samePlace(s, b.to))) seen.push(b.to);
+  }
+  return (seen.length ? seen : [bookings.at(-1).to]).map(shortPlace);
 }
 
 function tripCard(info) {
   const { trip, bookings, start, end, active, upcoming } = info;
-  const dots = bookings.slice(0, 4).map((b) => `<span class="type-dot" style="${typeVars(b.type)}" title="${typeOf(b).label}">${icon(typeOf(b).icon, 14)}</span>`).join('')
+  const dots = bookings.slice(0, 4).map((b) => `<span class="type-dot" style="${typeVars(b.type)}" title="${typeOf(b).label}">${icon(typeOf(b).icon, 13)}</span>`).join('')
     + (bookings.length > 4 ? `<span class="type-dot more">+${bookings.length - 4}</span>` : '');
   const pill = active ? '<span class="pill now">Now</span>' : upcoming ? `<span class="pill soft">${relDay(start)}</span>` : '';
   return `<a class="trip-card${upcoming ? '' : ' is-past'}" href="#/trip/${trip.id}">
-    <div class="trip-card-main">
-      <div class="trip-when">${fmtRange(start, end)}</div>
-      <h3>${esc(trip.name)}</h3>
-      <div class="trip-route">${routeSummary(bookings)}</div>
+    <div class="trip-card-top">
+      <div class="trip-card-main">
+        <h3>${esc(trip.name)}</h3>
+        <div class="trip-dest">${icon('map-pin', 14)}<span>${destinations(bookings).map(esc).join(' · ')}</span></div>
+      </div>
+      ${pill}
     </div>
-    <div class="trip-side">${pill}<div class="type-stack">${dots}</div></div>
+    <div class="trip-card-foot">
+      <span class="trip-when">${icon('calendar', 14)}${fmtRange(start, end)}</span>
+      <span class="trip-count"><span class="type-stack">${dots}</span>${plural(bookings.length, 'booking')}</span>
+    </div>
   </a>`;
 }
 
@@ -747,7 +765,10 @@ function render({ keepScroll = false } = {}) {
   let { route, id, sub, query } = parseHash();
   if (!VIEWS[route]) route = '';
   const y = window.scrollY;
-  $('#app').innerHTML = VIEWS[route](id, query);
+  const app = $('#app');
+  app.innerHTML = VIEWS[route](id, query);
+  // Fade a screen in when you arrive on it, but not on quiet refreshes of the same screen.
+  app.classList.toggle('view-in', !keepScroll);
   document.body.dataset.route = route || 'home';
   document.title = TITLES[route];
   const tab = route === 'timeline' ? 'timeline' : ['', 'trip', 'booking'].includes(route) ? 'home' : '';
@@ -860,7 +881,7 @@ document.addEventListener('visibilitychange', refresh);
 async function init() {
   $('#tabbar').innerHTML = `
     <a class="tab" data-tab="home" href="#/">${icon('home', 22)}<span>Home</span></a>
-    <a class="tab tab-add" href="#/add" aria-label="Add a booking"><span class="add-circle">${icon('plus', 26)}</span></a>
+    <a class="tab tab-add" href="#/add" aria-label="Add a booking" title="Add a booking"><span class="add-circle">${icon('plus', 26)}</span></a>
     <a class="tab" data-tab="timeline" href="#/timeline">${icon('timeline', 22)}<span>Timeline</span></a>`;
 
   state.persistent = await Store.init();
