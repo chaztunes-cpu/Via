@@ -273,6 +273,8 @@ body[data-route="add"] #app, body[data-route="edit"] #app { padding-bottom: 24px
 .ticket-head .pill { background: rgba(255, 255, 255, .18); }
 .ticket-route { padding: 24px 18px 22px; }
 .ticket .pt .time, .ticket .pt .sub { color: var(--muted); }
+/* Booking page: slightly smaller city names that never split mid-word (fitCityNames shrinks long ones further). */
+.ticket .pt .city { font-size: 22px; overflow-wrap: normal; }
 .ticket .path { color: var(--c); }
 .ticket .path-icon { background: color-mix(in srgb, var(--c) 14%, transparent); }
 .ticket-perf { position: relative; margin: 0 18px; border-top: 2px dashed var(--line); }
@@ -498,6 +500,7 @@ dialog.viewer:not([open]) { display: none; }
   dialog.sheet { margin: auto; border-radius: 24px; }
   .hero { padding: 28px; }
   .pt .city { font-size: 32px; }
+  .ticket .pt .city { font-size: 28px; }
   .path { width: 120px; }
 }
 

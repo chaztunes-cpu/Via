@@ -319,6 +319,19 @@ function routeHTML(b, { airportCodes = false } = {}) {
     ${point(b.to, b.arriveTime, shift > 0 ? `<sup>+${shift}</sup>` : '')}`;
 }
 
+// On the booking page, shrink city names that are too wide for their column so they stay on one line.
+// Both names share the smaller size so they match.
+function fitCityNames() {
+  const els = [...document.querySelectorAll('.ticket .pt .city')];
+  if (!els.length) return;
+  els.forEach((el) => { el.style.fontSize = ''; });
+  let size = parseFloat(getComputedStyle(els[0]).fontSize);
+  while (els.some((el) => el.scrollWidth > el.clientWidth + 1) && size > 15) {
+    size--;
+    els.forEach((el) => { el.style.fontSize = `${size}px`; });
+  }
+}
+
 function ticketButton(b, cls) {
   const files = filesFor(b.id);
   if (files.length === 1) {
@@ -826,6 +839,7 @@ function render({ keepScroll = false } = {}) {
     t.classList.toggle('active', on);
     if (on) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
   });
+  if (route === 'booking') fitCityNames();
   if (route === 'edit') setupForm(bookingById(id));
   if (route === 'add' && id === 'manual') setupForm(null);
   if (route === 'add' && id === 'review') setupReview();
@@ -941,6 +955,8 @@ document.addEventListener('change', async (e) => {
   }
 });
 
+window.addEventListener('resize', fitCityNames);
+document.fonts?.ready.then(fitCityNames);
 window.addEventListener('hashchange', () => { if (trackNav()) render(); });
 
 // Keep countdowns fresh, without disturbing someone who's typing.
