@@ -16,7 +16,7 @@ The first time you open it you'll see **sample trips**, so you can look around. 
 - **Trip details** show every booking in a trip in order, plus how long you're staying in each place.
 - **Booking details** look like a ticket: times, confirmation number (with a Copy button), seat and notes.
 - **Tickets and documents.** Attach PDFs and screenshots to any booking. They're saved on your device and open even without internet.
-- **Add from a ticket.** Tap **+**, then **Scan or upload ticket**, and choose a PDF, screenshot or photo. Once automatic reading is set up, Via fills in the details for you to check. Anything it can't find is left blank, and nothing is saved until you confirm. Until then, the ticket is attached and you type the details.
+- **Add from a ticket.** Tap **+**, then **Scan or upload ticket**, and choose a PDF, screenshot or photo. Once automatic reading is set up ([setup guide](docs/ticket-reader-setup.md)), Via fills in the details for you to check. Anything it can't find is left blank, and nothing is saved until you confirm. Until then, the ticket is attached and you type the details.
 - **Timeline** lists every upcoming departure, with a clear icon and colour for each type of transport.
 - **Add to calendar** puts any booking into Google, Apple or Outlook calendar.
 - **Backup and restore** (gear icon) saves everything, tickets included, to a single file.
@@ -35,5 +35,6 @@ Plain HTML, CSS and JavaScript with no build step.
 - `js/app.js`: screens, navigation and actions
 - `js/store.js`: on-device storage (IndexedDB)
 - `js/reader.js`: adding a booking from an uploaded ticket (Add screen, ticket reader connection, review screen)
+- `backend/via-reader-worker.js`: the private ticket reader (a Cloudflare Worker that asks Claude to read a ticket)
 - `js/sample.js`: sample trips shown on first launch
 - `js/icons.js`: icon set

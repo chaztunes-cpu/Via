@@ -86,7 +86,7 @@ async function readTicket(file) {
   } finally {
     clearTimeout(timer);
   }
-  if (res.status === 401 || res.status === 403) throw new ReadError('Your ticket reader didn’t accept the passcode. Check it in Settings → Automatic ticket reading.');
+  if (res.status === 401) throw new ReadError('Your ticket reader didn’t accept the passcode. Check it in Settings → Automatic ticket reading.');
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new ReadError(typeof data?.error === 'string' ? data.error : 'Your ticket couldn’t be read. Try again, or enter the details yourself.');
   const segments = cleanSegments(data);
@@ -345,6 +345,22 @@ async function confirmReview() {
 }
 
 /* ---------- Settings ---------- */
+// Returns a plain-language problem, or '' when the ticket reader is ready.
+async function checkReader(url, passcode) {
+  let res;
+  try {
+    res = await fetch(url, { headers: { Authorization: `Bearer ${passcode}` } });
+  } catch {
+    return 'Via couldn’t reach that address. Check it’s copied exactly, and that you’re online.';
+  }
+  const data = await res.json().catch(() => null);
+  if (res.status === 401) return 'The passcode doesn’t match the one saved in Cloudflare.';
+  if (!res.ok) return data?.error || 'That address didn’t respond like a Via ticket reader.';
+  if (data?.service !== 'via-reader') return 'That address isn’t a Via ticket reader. Check you copied the Worker’s address.';
+  if (!data.ready) return `The ticket reader isn’t finished setting up. In Cloudflare, add: ${(data.missing || []).join(' and ')}.`;
+  return '';
+}
+
 function openReaderSettings() {
   const reader = state.reader || {};
   const d = dialog('sheet', `<form class="sheet-inner" id="reader-form" novalidate>
@@ -365,10 +381,17 @@ function openReaderSettings() {
     const err = d.querySelector('#reader-err');
     if (!/^https:\/\/\S+$/i.test(url) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/\S*)?$/i.test(url)) { err.textContent = 'Enter the full address, starting with https://'; return; }
     if (!passcode) { err.textContent = 'Enter the passcode.'; return; }
+    const button = d.querySelector('button[type=submit]');
+    button.disabled = true;
+    button.textContent = 'Checking connection…';
+    const problem = await checkReader(url, passcode);
+    button.disabled = false;
+    button.textContent = 'Save';
+    if (problem) { err.textContent = problem; return; }
     state.reader = { url, passcode };
     await Store.put('meta', { key: 'reader', value: state.reader });
     d.close();
-    toast('Automatic reading is on');
+    toast('Connected. Automatic reading is on');
     render({ keepScroll: true });
   });
 }
