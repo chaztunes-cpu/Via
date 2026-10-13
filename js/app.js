@@ -292,13 +292,26 @@ function emptyState() {
   </div>`;
 }
 
-function routeHTML(b) {
+// The three-letter airport code saved with a place, e.g. "Boston (BOS)" or just "BOS"; '' if there isn't one.
+function airportCode(place) {
+  const detail = placeDetail(place);
+  if (/^[a-z]{3}$/i.test(detail)) return detail.toUpperCase();
+  return /^[A-Z]{3}$/.test((place || '').trim()) ? place.trim() : '';
+}
+
+// With `airportCodes`, a flight shows each airport code large with the city name underneath.
+function routeHTML(b, { airportCodes = false } = {}) {
   const shift = arrivalShift(b);
-  const point = (place, time, extra = '') => `<div class="pt">
+  const point = (place, time, extra = '') => {
+    const code = airportCodes && typeKey(b.type) === 'flight' ? airportCode(place) : '';
+    const city = shortPlace(place);
+    const main = code || city, sub = code ? (city === code ? '' : city) : placeDetail(place);
+    return `<div class="pt">
       <div class="time">${fmtTime(time) || '&nbsp;'}${extra}</div>
-      <div class="city">${esc(shortPlace(place))}</div>
-      <div class="sub">${esc(placeDetail(place)) || '&nbsp;'}</div>
+      <div class="city">${esc(main)}</div>
+      <div class="sub">${esc(sub) || '&nbsp;'}</div>
     </div>`;
+  };
   return `${point(b.from, b.departTime)}
     <div class="path" aria-hidden="true"><span class="line"></span><span class="path-icon">${icon(typeOf(b).icon, 18)}</span><span class="line"></span></div>
     ${point(b.to, b.arriveTime, shift > 0 ? `<sup>+${shift}</sup>` : '')}`;
@@ -330,7 +343,7 @@ function heroCard(b) {
       <span class="hero-label">${underway ? 'Happening now' : 'Next departure'}</span>
       <span class="pill">${status}</span>
     </div>
-    <a class="route hero-route" href="#/booking/${b.id}">${routeHTML(b)}</a>
+    <a class="route hero-route" href="#/booking/${b.id}">${routeHTML(b, { airportCodes: true })}</a>
     <div class="hero-meta">${meta.map(([k, v]) => `<div><span>${esc(k)}</span><b>${v}</b></div>`).join('')}</div>
     <div class="hero-actions">
       <a class="btn light" href="#/booking/${b.id}">View booking ${icon('chevron-right', 18)}</a>
