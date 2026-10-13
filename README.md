@@ -23,7 +23,7 @@ The first time you open it you'll see **sample trips**, so you can look around. 
 
 ## Where your data lives
 
-Everything is stored privately in your browser on this device. Nothing is uploaded anywhere.
+Everything is stored privately in your browser on this device. The only thing that ever leaves it is a ticket you ask Via to read automatically. That ticket goes to your own private ticket reader, which doesn't keep a copy.
 Clearing your browser's data for this page would erase your trips, so use **Settings → Back up my trips** now and then.
 
 ## For developers
