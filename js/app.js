@@ -8,10 +8,12 @@ const TYPES = {
   ferry: { label: 'Ferry', icon: 'ship', provider: 'Ferry operator', providerPh: 'e.g. BC Ferries', number: 'Sailing / vessel', numberPh: 'Optional', placePh: 'City or terminal' },
   other: { label: 'Other', icon: 'ticket', provider: 'Provider', providerPh: 'e.g. Airport shuttle', number: 'Reference number', numberPh: 'Optional', placePh: 'Pickup or drop-off' },
 };
-const BOOKING_FIELDS = ['type', 'from', 'to', 'departDate', 'departTime', 'arriveDate', 'arriveTime', 'provider', 'number', 'confirmation', 'seat', 'notes'];
+const BOOKING_FIELDS = ['type', 'from', 'to', 'departDate', 'departTime', 'arriveDate', 'arriveTime', 'provider', 'number', 'confirmation', 'passenger', 'seat', 'gate', 'notes'];
 const MAX_FILE_BYTES = 30 * 1024 * 1024;
 
-const state = { bookings: [], trips: [], files: [], persistent: true, showPast: false };
+// `draft` holds an add-a-booking flow in progress (the uploaded ticket and what was read from it).
+// `reader` is the user's private ticket-reading service, if they've set one up.
+const state = { bookings: [], trips: [], files: [], persistent: true, showPast: false, draft: null, reader: null };
 
 /* ---------- Small helpers ---------- */
 const $ = (sel) => document.querySelector(sel);
@@ -479,7 +481,9 @@ function viewBooking(id) {
     ['Departs', `${fmtDay(dep(b))}${b.departTime ? `, ${fmtTime(b.departTime)}` : ''}`],
     ['Arrives', b.arriveDate && `${fmtDay(toDate(b.arriveDate))}${b.arriveTime ? `, ${fmtTime(b.arriveTime)}` : ''}`],
     [t.number, b.number && esc(b.number)],
+    ['Passenger', b.passenger && esc(b.passenger)],
     ['Seat / class', b.seat && esc(b.seat)],
+    ['Terminal, gate or platform', b.gate && esc(b.gate)],
   ].filter((f) => f[1]);
   return `${navbar(trip ? `#/trip/${trip.id}` : '#/')}
     <article class="ticket" style="${typeVars(b.type)}">
@@ -513,7 +517,8 @@ const field = (name, label, value, attrs = '') =>
 function viewForm(id, query) {
   const editing = id ? bookingById(id) : null;
   if (id && !editing) return viewMissing('booking');
-  const presetTrip = !editing && tripById(query.get('trip'));
+  const presetTrip = !editing && tripById(query.get('trip') || state.draft?.tripId);
+  const fromTicket = !editing && state.draft?.file;
   const presetLegs = presetTrip ? tripInfo(presetTrip)?.bookings || [] : [];
   const lastLeg = presetLegs.at(-1);
   // Start the next leg where the trip left off, unless the trip already returns home.
@@ -522,9 +527,10 @@ function viewForm(id, query) {
   const currentTrip = editing?.tripId || presetTrip?.id || '';
   const options = allTrips().filter((t) => t.upcoming || t.trip.id === currentTrip);
   const v = (k) => esc(b[k] || '');
-  const back = editing ? `#/booking/${editing.id}` : presetTrip ? `#/trip/${presetTrip.id}` : '#/';
-  return `${navbar(back, '', 'Cancel')}
+  const back = editing ? `#/booking/${editing.id}` : '#/add';
+  return `${navbar(back, '', editing ? 'Cancel' : 'Back')}
   <h1 class="page-title">${editing ? 'Edit booking' : 'New booking'}</h1>
+  ${fromTicket ? `<div class="banner form-banner"><div><b>${state.reader ? 'Enter the details' : 'Automatic reading isn’t set up yet'}</b><p>Your ticket is attached below. Type the details from it, then save.</p></div></div>` : ''}
   <form id="booking-form" class="form" novalidate autocomplete="off">
     <div class="type-picker" role="radiogroup" aria-label="Type of transport">
       ${Object.entries(TYPES).map(([k, t]) => `<label class="type-opt" style="${typeVars(k)}"><input type="radio" name="type" value="${k}" ${typeKey(b.type) === k ? 'checked' : ''}><span class="type-tile">${icon(t.icon, 22)}<span>${t.label}</span></span></label>`).join('')}
@@ -560,10 +566,11 @@ function viewForm(id, query) {
     <div class="card-group">
       <div class="row">${field('provider', 'Provider', v('provider'))}${field('number', 'Number', v('number'))}</div>
       ${field('confirmation', 'Confirmation number', v('confirmation'), 'placeholder="e.g. X7KQ2P" autocapitalize="characters" spellcheck="false"')}
-      <details class="more" ${b.seat || b.notes ? 'open' : ''}>
-        <summary>${icon('chevron-down', 16)} More details <span class="opt">seat, notes</span></summary>
+      <details class="more" ${b.seat || b.notes || b.passenger || b.gate ? 'open' : ''}>
+        <summary>${icon('chevron-down', 16)} More details <span class="opt">passenger, seat, gate, notes</span></summary>
         <div class="more-body">
-          ${field('seat', 'Seat / class', v('seat'), 'placeholder="e.g. 14C, Economy"')}
+          ${field('passenger', 'Passenger', v('passenger'), 'placeholder="Name on the ticket" autocomplete="off"')}
+          <div class="row">${field('seat', 'Seat / class', v('seat'), 'placeholder="e.g. 14C"')}${field('gate', 'Terminal / gate / platform', v('gate'), 'placeholder="e.g. Terminal 2"')}</div>
           <div class="field"><label for="f-notes">Notes</label><textarea id="f-notes" name="notes" rows="3" placeholder="Terminal, baggage, check-in reminders…">${v('notes')}</textarea></div>
         </div>
       </details>
@@ -598,7 +605,9 @@ function viewForm(id, query) {
 function setupForm(editing) {
   const form = $('#booking-form');
   if (!form) return;
-  const el = form.elements, pending = [];
+  const el = form.elements;
+  // A ticket uploaded on the Add screen comes along to be attached to this booking.
+  const pending = !editing && state.draft?.file ? [state.draft.file] : [];
   let tripTouched = el.trip.value !== 'new';
   let lastDepart = el.departDate.value;
 
@@ -682,12 +691,14 @@ function setupForm(editing) {
     await put('bookings', booking);
     if (pending.length) await addFiles(booking.id, pending);
     if (editing) await cleanupTrip(editing.tripId);
+    state.draft = null;
     toast(editing ? 'Changes saved' : 'Booking added');
     leaveTo(editing ? `#/booking/${booking.id}` : `#/trip/${tripId}`);
   });
 
   applyType();
   syncTrip();
+  if (pending.length) renderPending();
 }
 
 /* ---------- Dialogs & toast ---------- */
@@ -717,6 +728,7 @@ function openSettings() {
   const hasSamples = state.bookings.some((b) => b.sample);
   dialog('sheet', `<div class="sheet-inner">
     <div class="sheet-head"><h2>Settings</h2><button class="icon-btn" data-action="close-dialog" aria-label="Close">${icon('x', 18)}</button></div>
+    <button class="menu-item" data-action="reader-settings"><span class="mi-icon">${icon('scan')}</span><span><b>Automatic ticket reading</b><small>${state.reader ? 'On' : 'Not set up yet'}</small></span></button>
     <button class="menu-item" data-action="export"><span class="mi-icon">${icon('download')}</span><span><b>Back up my trips</b><small>Save a file with all your bookings and tickets</small></span></button>
     <button class="menu-item" data-action="pick-files"><span class="mi-icon">${icon('upload')}</span><span><b>Restore from a backup</b><small>Load a backup file you saved earlier</small></span></button>
     <input type="file" accept="application/json,.json" hidden data-change="import">
@@ -736,15 +748,30 @@ function toast(msg) {
 
 /* ---------- Navigation ---------- */
 const navStack = [];
+let pendingLeave = null; // set while stepping back out of the add-a-booking flow
 function parseHash() {
   const [path, qs] = location.hash.replace(/^#\/?/, '').split('?');
   const [route = '', id = '', sub = ''] = path.split('/');
   return { route, id, sub, query: new URLSearchParams(qs) };
 }
+// Keeps a list of the screens visited, so Back can return to the right place.
+// Returns false when it has sent the browser straight on to another screen.
 function trackNav() {
   const h = location.hash || '#/';
+  if (pendingLeave) {
+    const { steps, landing, target } = pendingLeave;
+    pendingLeave = null;
+    if (h === landing) navStack.splice(navStack.length - steps);
+    else navStack.splice(0, navStack.length, h); // history wasn't where we expected; start afresh
+    if (h === target) return true;
+    if (h === landing) { location.hash = target; return false; }
+    history.replaceState(null, '', target);
+    navStack[navStack.length - 1] = target;
+    return true;
+  }
   if (navStack.at(-2) === h) navStack.pop();
   else if (navStack.at(-1) !== h) navStack.push(h);
+  return true;
 }
 function go(hash, { replace = false } = {}) {
   if (!replace) { location.hash = hash; return; }
@@ -753,13 +780,20 @@ function go(hash, { replace = false } = {}) {
   render();
 }
 // Leave the current screen for `hash`, stepping back in history if that's where we came from.
+// Screens of the add-a-booking flow are skipped over, so Back never returns to a finished form.
 function leaveTo(hash) {
-  if (navStack.at(-2) === hash) history.back();
-  else go(hash, { replace: true });
+  let steps = 1;
+  while (navStack.length - 1 - steps > 0 && navStack.at(-1 - steps).startsWith('#/add')) steps++;
+  const landing = navStack.at(-1 - steps);
+  if (landing === hash || (landing && steps > 1)) {
+    pendingLeave = { steps, landing, target: hash };
+    history.go(-steps);
+  } else go(hash, { replace: true });
 }
 
-const VIEWS = { '': viewHome, timeline: viewTimeline, trip: viewTrip, booking: viewBooking, add: viewForm, edit: viewForm };
-const TITLES = { '': 'Via', timeline: 'Timeline · Via', trip: 'Trip · Via', booking: 'Booking · Via', add: 'New booking · Via', edit: 'Edit booking · Via' };
+const ADD_STEPS = { '': viewAddChooser, manual: (_, query) => viewForm(null, query), reading: viewReading, review: viewReview };
+const VIEWS = { '': viewHome, timeline: viewTimeline, trip: viewTrip, booking: viewBooking, add: (id, query) => (ADD_STEPS[id] || viewAddChooser)(id, query), edit: viewForm };
+const TITLES = { '': 'Via', timeline: 'Timeline · Via', trip: 'Trip · Via', booking: 'Booking · Via', add: 'Add a booking · Via', edit: 'Edit booking · Via' };
 
 function render({ keepScroll = false } = {}) {
   let { route, id, sub, query } = parseHash();
@@ -777,7 +811,9 @@ function render({ keepScroll = false } = {}) {
     t.classList.toggle('active', on);
     if (on) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
   });
-  if (route === 'add' || route === 'edit') setupForm(route === 'edit' ? bookingById(id) : null);
+  if (route === 'edit') setupForm(bookingById(id));
+  if (route === 'add' && id === 'manual') setupForm(null);
+  if (route === 'add' && id === 'review') setupReview();
   if (keepScroll) window.scrollTo(0, y);
   else if (sub === 'tickets') $('#tickets')?.scrollIntoView();
   else window.scrollTo(0, 0);
@@ -835,6 +871,20 @@ const actions = {
     go('#/', { replace: true });
   },
   async export() { await exportBackup(); toast('Backup saved'); },
+  'reader-settings': () => { closeDialogs(); openReaderSettings(); },
+  async 'remove-reader'() {
+    await Store.remove('meta', 'reader');
+    state.reader = null;
+    closeDialogs();
+    toast('Automatic reading turned off');
+    render({ keepScroll: true });
+  },
+  'retry-read': () => { state.draft.error = null; render(); runReading(); },
+  'remove-segment': (el) => {
+    state.draft.segments.splice(+el.dataset.id, 1);
+    render({ keepScroll: true });
+  },
+  'confirm-review': confirmReview,
 };
 
 document.addEventListener('click', async (e) => {
@@ -853,6 +903,16 @@ document.addEventListener('change', async (e) => {
     render({ keepScroll: true });
     if (n) toast(n === 1 ? 'Ticket added' : `${n} documents added`);
   }
+  if (el.dataset.change === 'scan-file') {
+    el.value = '';
+    state.draft = { ...state.draft, file: files[0], segments: null, error: null };
+    if (state.reader) {
+      go('#/add/reading');
+      runReading();
+    } else {
+      go('#/add/manual');
+    }
+  }
   if (el.dataset.change === 'import') {
     el.value = '';
     try {
@@ -866,7 +926,7 @@ document.addEventListener('change', async (e) => {
   }
 });
 
-window.addEventListener('hashchange', () => { trackNav(); render(); });
+window.addEventListener('hashchange', () => { if (trackNav()) render(); });
 
 // Keep countdowns fresh, without disturbing someone who's typing.
 function refresh() {
@@ -885,6 +945,7 @@ async function init() {
     <a class="tab" data-tab="timeline" href="#/timeline">${icon('timeline', 22)}<span>Timeline</span></a>`;
 
   state.persistent = await Store.init();
+  state.reader = (await Store.get('meta', 'reader'))?.value || null;
   [state.bookings, state.trips, state.files] = await Promise.all(['bookings', 'trips', 'files'].map((n) => Store.all(n)));
 
   if (!(await Store.get('meta', 'seeded'))) {
