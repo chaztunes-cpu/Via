@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vocal Finder</title>
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --surface: #ffffff;
+    --surface-2: #efede8;
+    --text: #1d1c1a;
+    --muted: #6b6862;
+    --border: #dedbd4;
+    --accent: #5b4bdb;
+    --accent-text: #ffffff;
+    --playing: #ece9ff;
+    --good: #1f7a4d;
+    --good-bg: #e2f3ea;
+    --warn: #8a5a00;
+    --warn-bg: #fbf0d9;
+    --error: #b42318;
+    --error-bg: #fde8e6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141414;
+      --surface: #1d1d1f;
+      --surface-2: #29292c;
+      --text: #f1f0ee;
+      --muted: #a09d98;
+      --border: #343438;
+      --accent: #8f83ff;
+      --accent-text: #141414;
+      --playing: #2a2747;
+      --good: #6fd3a0;
+      --good-bg: #183225;
+      --warn: #f0c36a;
+      --warn-bg: #352a12;
+      --error: #ff8b80;
+      --error-bg: #3a1916;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 120px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  .lede { color: var(--muted); margin: 0 0 20px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 4px; }
+  .hint { color: var(--muted); font-size: .85rem; margin: 6px 0 0; }
+  input[type=text], input[type=password], select {
+    width: 100%;
+    font: inherit;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .check { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; font-size: .95rem; margin-top: 12px; }
+  .check input { margin-top: 4px; }
+  button {
+    font: inherit;
+    border: 0;
+    border-radius: 10px;
+    padding: 10px 16px;
+    cursor: pointer;
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  button.primary { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; align-items: center; }
+  .status { padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; }
+  .status.info { background: var(--surface-2); }
+  .status.warn { background: var(--warn-bg); color: var(--warn); }
+  .status.error { background: var(--error-bg); color: var(--error); }
+  .summary { color: var(--muted); font-size: .9rem; margin: 0 0 8px; }
+  .shortcuts { color: var(--muted); font-size: .85rem; }
+  kbd {
+    font: 12px ui-monospace, monospace;
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    padding: 1px 5px;
+    background: var(--surface);
+  }
+
+  ol.results { list-style: none; padding: 0; margin: 0; }
+  .item {
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 12px;
+    align-items: start;
+    padding: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .item.current { background: var(--playing); border-color: var(--accent); }
+  .play {
+    width: 44px; height: 44px; padding: 0;
+    border-radius: 50%;
+    background: var(--accent); color: var(--accent-text);
+    display: grid; place-items: center;
+  }
+  .play svg { width: 18px; height: 18px; fill: currentColor; }
+  .name { font-weight: 600; overflow-wrap: anywhere; }
+  .meta { color: var(--muted); font-size: .85rem; margin-top: 2px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .badge { font-size: .75rem; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); }
+  .badge.cc0 { background: var(--good-bg); color: var(--good); font-weight: 600; }
+  .badge.by { background: var(--warn-bg); color: var(--warn); font-weight: 600; }
+  .badge.key { background: var(--playing); }
+  .item a { color: var(--accent); font-size: .85rem; }
+  .progress { height: 3px; background: var(--surface-2); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .progress span { display: block; height: 100%; width: 0; background: var(--accent); }
+
+  .player {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 10px 16px;
+  }
+  .player-inner { max-width: 860px; margin: 0 auto; display: flex; gap: 10px; align-items: center; }
+  .player .now { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .9rem; }
+  .player[hidden] { display: none; }
+  details summary { cursor: pointer; font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Vocal Finder</h1>
+  <p class="lede">Find free vocal samples in a key, then listen to them one after another.</p>
+
+  <section class="card" id="keyCard">
+    <label for="apiKey">Freesound API key</label>
+    <input type="password" id="apiKey" autocomplete="off" placeholder="Paste your key here">
+    <p class="hint">
+      Samples come from <a href="https://freesound.org" target="_blank" rel="noopener">Freesound</a>, which needs a free key.
+      <a href="https://freesound.org/apiv2/apply/" target="_blank" rel="noopener">Get one here</a>
+      (sign in, fill in the short form, then copy the “Client secret/Api key”). It's saved in this browser only.
+    </p>
+  </section>
+
+  <form class="card" id="searchForm">
+    <div class="row">
+      <div>
+        <label for="note">Key</label>
+        <select id="note"></select>
+      </div>
+      <div>
+        <label for="mode">Scale</label>
+        <select id="mode">
+          <option value="minor">Minor</option>
+          <option value="major">Major</option>
+        </select>
+      </div>
+      <div>
+        <label for="maxLen">Length</label>
+        <select id="maxLen">
+          <option value="10">Under 10 seconds</option>
+          <option value="30" selected>Under 30 seconds</option>
+          <option value="120">Under 2 minutes</option>
+          <option value="">Any length</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <label for="words">Extra words (optional)</label>
+      <input type="text" id="words" placeholder="e.g. female, chop, ooh, choir">
+    </div>
+    <label class="check">
+      <input type="checkbox" id="allowBy">
+      <span>Also show samples that are free to use but ask you to credit the creator (CC BY).
+        Leave this off for no-strings samples only (CC0).</span>
+    </label>
+    <div class="actions">
+      <button class="primary" type="submit" id="searchBtn">Find samples</button>
+      <label class="check" style="margin:0"><input type="checkbox" id="autoNext" checked> <span>Play the next one automatically</span></label>
+    </div>
+  </form>
+
+  <div id="status" class="status info" hidden></div>
+
+  <section id="resultsSection" hidden>
+    <p class="summary" id="summary"></p>
+    <p class="shortcuts">Shortcuts: <kbd>Space</kbd> play/pause · <kbd>↓</kbd> or <kbd>J</kbd> next · <kbd>↑</kbd> or <kbd>K</kbd> previous</p>
+    <ol class="results" id="results"></ol>
+    <div class="actions"><button type="button" id="moreBtn">Load more</button></div>
+  </section>
+
+  <details class="card" style="margin-top:24px">
+    <summary>How the key is worked out</summary>
+    <p>Each sample is matched in one of two ways, shown on its row:</p>
+    <ul>
+      <li><strong>Labelled</strong>: the creator wrote the key in the name or tags (for example “Vocal_Am_120bpm”). Usually reliable.</li>
+      <li><strong>Detected</strong>: Freesound analysed the audio and estimated the key. Good for sung notes, less so for speech or noisy recordings.</li>
+    </ul>
+    <p>Always trust your ears: a quick listen tells you if it sits in your track.</p>
+  </details>
+</main>
+
+<div class="player" id="player" hidden>
+  <div class="player-inner">
+    <button type="button" id="prevBtn" aria-label="Previous">◀◀</button>
+    <button type="button" class="primary" id="toggleBtn" aria-label="Play or pause">Pause</button>
+    <button type="button" id="nextBtn" aria-label="Next">▶▶</button>
+    <div class="now" id="nowPlaying"></div>
+  </div>
+</div>
+
+<audio id="audio" preload="none"></audio>
+
+<script src="key-match.js"></script>
+<script>
+(() => {
+  const API_BASE = 'https://freesound.org/apiv2/search/text/';
+  const PAGE_SIZE = 50;
+  const BASE_FIELDS = 'id,name,username,duration,tags,license,previews,url';
+  // Freesound has used two names for its key estimate over the years. Try the
+  // current one first and fall back if the server rejects it.
+  const KEY_FIELDS = ['tonality', 'ac_tonality'];
+
+  const $ = id => document.getElementById(id);
+  const audio = $('audio');
+  const ICON_PLAY = '<svg viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg>';
+  const ICON_PAUSE = '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
+
+  const state = {
+    sources: [],      // one entry per query: { params, page, done, kind }
+    items: [],        // merged, de-duplicated results in display order
+    byId: new Map(),
+    current: -1,
+    keyField: null,   // which analysis field works, once known
+    loading: false,
+  };
+
+  // ---- Saved settings (best effort; the page works without them) ----
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+
+  KeyMatch.NOTES.forEach((spellings, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = spellings.join(' / ');
+    $('note').appendChild(opt);
+  });
+  $('apiKey').value = store.get('vf.apiKey') || '';
+  $('note').value = store.get('vf.note') || '0';
+  $('mode').value = store.get('vf.mode') || 'minor';
+  $('autoNext').checked = store.get('vf.autoNext') !== '0';
+  $('apiKey').addEventListener('change', () => store.set('vf.apiKey', $('apiKey').value.trim()));
+  $('autoNext').addEventListener('change', () => store.set('vf.autoNext', $('autoNext').checked ? '1' : '0'));
+
+  function showStatus(text, kind = 'info') {
+    const el = $('status');
+    el.hidden = !text;
+    el.className = 'status ' + kind;
+    el.textContent = text || '';
+  }
+
+  // ---- Talking to Freesound ----
+  class ApiError extends Error {
+    constructor(status, message) { super(message); this.status = status; }
+  }
+
+  async function fsSearch(params) {
+    const url = new URL(API_BASE);
+    for (const [k, v] of Object.entries(params)) if (v !== '' && v != null) url.searchParams.set(k, v);
+    url.searchParams.set('token', $('apiKey').value.trim());
+    let res;
+    try {
+      res = await fetch(url);
+    } catch {
+      throw new ApiError(0, "Couldn't reach Freesound. Check your internet connection.");
+    }
+    if (res.status === 404) return { results: [], next: null }; // past the last page
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.json()).detail || ''; } catch {}
+      throw new ApiError(res.status, detail || `Freesound replied with error ${res.status}.`);
+    }
+    return res.json();
+  }
+
+  function friendlyError(err) {
+    if (err.status === 401) return 'Freesound didn\'t accept that API key. Check you copied the whole “Client secret/Api key”.';
+    if (err.status === 429) return 'Freesound says too many searches right now. Wait a minute and try again.';
+    return err.message;
+  }
+
+  function licenseFilter(allowBy) {
+    return allowBy
+      ? 'license:("Creative Commons 0" OR "Attribution" OR "Attribution 4.0")'
+      : 'license:"Creative Commons 0"';
+  }
+
+  function quoteList(field, values) {
+    return values.length === 1
+      ? `${field}:"${values[0]}"`
+      : `${field}:(${values.map(v => `"${v}"`).join(' OR ')})`;
+  }
+
+  function buildSources(opts) {
+    const { note, mode, words, maxLen, allowBy } = opts;
+    const common = [licenseFilter(allowBy)];
+    if (maxLen) common.push(`duration:[0 TO ${maxLen}]`);
+    const base = ['vocal', words].filter(Boolean).join(' ');
+    const sources = [];
+
+    // 1) Samples whose name or tags mention the key. Each spelling style is
+    //    its own query; results are double-checked locally by KeyMatch.
+    for (const q of KeyMatch.textQueries(note, mode)) {
+      sources.push({ kind: 'labelled', params: { query: `${base} ${q}`, filter: common.join(' ') } });
+    }
+    // 2) Samples Freesound's audio analysis puts in the key.
+    sources.push({
+      kind: 'detected',
+      params: { query: base, filter: common.join(' ') },
+      keyValues: KeyMatch.analysisValues(note, mode),
+    });
+    return sources.map(s => ({ ...s, page: 0, done: false }));
+  }
+
+  async function fetchDetectedPage(src) {
+    const fields = state.keyField ? [state.keyField] : KEY_FIELDS;
+    for (const field of fields) {
+      try {
+        const data = await fsSearch({
+          ...src.params,
+          filter: `${src.params.filter} ${quoteList(field, src.keyValues)}`,
+          fields: `${BASE_FIELDS},${field}`,
+          page: src.page + 1,
+          page_size: PAGE_SIZE,
+        });
+        state.keyField = field;
+        return { data, field };
+      } catch (err) {
+        if (err.status !== 400) throw err; // only a rejected field name is worth retrying
+      }
+    }
+    src.unsupported = true;
+    return { data: { results: [], next: null }, field: null };
+  }
+
+  async function fetchSourcePage(src, opts) {
+    let data, field = null;
+    if (src.kind === 'detected') {
+      ({ data, field } = await fetchDetectedPage(src));
+    } else {
+      data = await fsSearch({ ...src.params, fields: BASE_FIELDS, page: src.page + 1, page_size: PAGE_SIZE });
+    }
+    src.page += 1;
+    src.done = !data.next;
+
+    const found = [];
+    for (const s of data.results || []) {
+      if (!KeyMatch.licenseOk(s.license, opts.allowBy)) continue;
+      const how = new Set();
+      if (src.kind === 'detected') {
+        how.add('detected');
+      } else if (KeyMatch.textMatches(`${s.name} ${(s.tags || []).join(' ')}`, opts.note, opts.mode)) {
+        how.add('labelled');
+      } else {
+        continue; // the search engine matched loosely; the key isn't really there
+      }
+      if (field && s[field]) s.detectedKey = s[field];
+      found.push({ s, how });
+    }
+    return found;
+  }
+
+  async function loadMore(opts) {
+    if (state.loading) return;
+    state.loading = true;
+    $('moreBtn').disabled = true;
+    $('searchBtn').disabled = true;
+    showStatus(state.items.length ? 'Loading more…' : 'Searching…');
+    let added = 0;
+    try {
+      const pending = state.sources.filter(s => !s.done);
+      // Run queries one at a time to stay gentle on Freesound's rate limit.
+      for (const src of pending) {
+        for (const { s, how } of await fetchSourcePage(src, opts)) {
+          const existing = state.byId.get(s.id);
+          if (existing) {
+            how.forEach(h => existing.how.add(h));
+            if (s.detectedKey) existing.detectedKey = s.detectedKey;
+            updateRow(existing);
+          } else {
+            const item = { ...s, how, index: state.items.length };
+            state.items.push(item);
+            state.byId.set(s.id, item);
+            renderRow(item);
+            added++;
+          }
+        }
+      }
+      const detected = state.sources.find(s => s.kind === 'detected');
+      if (!state.items.length) {
+        showStatus('No samples found for that key. Try a different length, fewer extra words, or turn on CC BY samples.', 'warn');
+      } else if (detected && detected.unsupported) {
+        showStatus('Freesound\'s key detection isn\'t available right now, so only labelled samples are shown.', 'warn');
+      } else if (!added) {
+        showStatus('No more new samples found.');
+      } else {
+        showStatus('');
+      }
+    } catch (err) {
+      showStatus(friendlyError(err), 'error');
+    } finally {
+      state.loading = false;
+      $('searchBtn').disabled = false;
+      const more = state.sources.some(s => !s.done);
+      $('moreBtn').disabled = !more;
+      $('moreBtn').hidden = !more;
+      updateSummary();
+    }
+  }
+
+  // ---- Results list ----
+  function fmtDuration(sec) {
+    if (sec < 60) return `${sec.toFixed(1)}s`;
+    const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  function badgesHtml(item) {
+    const parts = [];
+    parts.push(KeyMatch.isCC0(item.license)
+      ? '<span class="badge cc0" title="No permission or credit needed">CC0 · free, no credit</span>'
+      : `<span class="badge by" title="Free to use; credit the creator">CC BY · credit ${esc(item.username)}</span>`);
+    if (item.how.has('labelled')) parts.push('<span class="badge key">Labelled</span>');
+    if (item.how.has('detected')) parts.push(`<span class="badge key">Detected${item.detectedKey ? ': ' + esc(item.detectedKey) : ''}</span>`);
+    return parts.join('');
+  }
+
+  function esc(t) {
+    return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function renderRow(item) {
+    const li = document.createElement('li');
+    li.className = 'item';
+    li.dataset.index = item.index;
+    li.innerHTML = `
+      <button type="button" class="play" aria-label="Play ${esc(item.name)}">${ICON_PLAY}</button>
+      <div>
+        <div class="name">${esc(item.name)}</div>
+        <div class="meta">${fmtDuration(item.duration)} · by ${esc(item.username)} ·
+          <a href="${esc(item.url)}" target="_blank" rel="noopener">Open on Freesound</a></div>
+        <div class="badges">${badgesHtml(item)}</div>
+        <div class="progress"><span></span></div>
+      </div>`;
+    li.addEventListener('click', e => {
+      if (e.target.closest('a')) return;
+      if (state.current === item.index) togglePlay(); else playIndex(item.index);
+    });
+    $('results').appendChild(li);
+    item.el = li;
+  }
+
+  function updateRow(item) {
+    if (item.el) item.el.querySelector('.badges').innerHTML = badgesHtml(item);
+  }
+
+  function updateSummary() {
+    const n = state.items.length;
+    const opts = state.opts;
+    $('resultsSection').hidden = n === 0;
+    if (opts) $('summary').textContent = `${n} sample${n === 1 ? '' : 's'} in ${KeyMatch.keyName(opts.note, opts.mode)}`;
+  }
+
+  // ---- Playback ----
+  function setIcons() {
+    state.items.forEach(it => {
+      const playing = it.index === state.current && !audio.paused;
+      it.el.querySelector('.play').innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
+      it.el.classList.toggle('current', it.index === state.current);
+    });
+    $('toggleBtn').textContent = audio.paused ? 'Play' : 'Pause';
+  }
+
+  function playIndex(i) {
+    if (i < 0 || i >= state.items.length) return;
+    const prev = state.items[state.current];
+    if (prev) prev.el.querySelector('.progress span').style.width = '0';
+    state.current = i;
+    const item = state.items[i];
+    audio.src = item.previews['preview-hq-mp3'] || item.previews['preview-lq-mp3'];
+    audio.play().catch(() => {});
+    $('player').hidden = false;
+    $('nowPlaying').textContent = item.name;
+    item.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    setIcons();
+    // Fetch the next page early so the list never runs dry while browsing.
+    if (i >= state.items.length - 3 && state.sources.some(s => !s.done)) loadMore(state.opts);
+  }
+
+  function togglePlay() {
+    if (state.current < 0) return playIndex(0);
+    if (audio.paused) audio.play().catch(() => {}); else audio.pause();
+  }
+
+  audio.addEventListener('play', setIcons);
+  audio.addEventListener('pause', setIcons);
+  audio.addEventListener('timeupdate', () => {
+    const item = state.items[state.current];
+    if (item && audio.duration) item.el.querySelector('.progress span').style.width = `${(audio.currentTime / audio.duration) * 100}%`;
+  });
+  audio.addEventListener('ended', () => {
+    if ($('autoNext').checked && state.current < state.items.length - 1) playIndex(state.current + 1);
+    else setIcons();
+  });
+  audio.addEventListener('error', () => {
+    if (state.current >= 0) showStatus('That preview couldn\'t be played. Skip to the next one.', 'warn');
+  });
+
+  $('toggleBtn').addEventListener('click', togglePlay);
+  $('nextBtn').addEventListener('click', () => playIndex(state.current + 1));
+  $('prevBtn').addEventListener('click', () => playIndex(Math.max(0, state.current - 1)));
+
+  document.addEventListener('keydown', e => {
+    if (e.target.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (!state.items.length) return;
+    if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+    else if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); playIndex(state.current + 1); }
+    else if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); playIndex(Math.max(0, state.current - 1)); }
+  });
+
+  // ---- Search ----
+  $('searchForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const key = $('apiKey').value.trim();
+    if (!key) {
+      showStatus('Paste your Freesound API key first (see the link above).', 'error');
+      $('apiKey').focus();
+      return;
+    }
+    store.set('vf.apiKey', key);
+    store.set('vf.note', $('note').value);
+    store.set('vf.mode', $('mode').value);
+
+    const opts = {
+      note: Number($('note').value),
+      mode: $('mode').value,
+      words: $('words').value.trim(),
+      maxLen: $('maxLen').value,
+      allowBy: $('allowBy').checked,
+    };
+    audio.pause();
+    audio.removeAttribute('src');
+    $('player').hidden = true;
+    $('results').innerHTML = '';
+    Object.assign(state, { opts, items: [], byId: new Map(), current: -1, sources: buildSources(opts) });
+    loadMore(opts);
+  });
+
+  $('moreBtn').addEventListener('click', () => loadMore(state.opts));
+})();
+</script>
+</body>
+</html>
