@@ -9,7 +9,7 @@ export function loadStore() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (Array.isArray(saved?.clients) && Array.isArray(saved?.projects) && Array.isArray(saved?.updates)) {
-      return saved;
+      return migrate(saved);
     }
   } catch {
     // Storage unavailable or corrupt: the caller falls back to sample data.
@@ -32,4 +32,28 @@ export function clearStore() {
   } catch {
     // Nothing to clear.
   }
+}
+
+/**
+ * Upgrades data saved by older versions of the app. Projects that only
+ * had a manual due date are treated as "deposit received" with a 4-week
+ * turnaround ending on that same date, so nothing moves.
+ */
+function migrate(data) {
+  for (const p of data.projects) {
+    if ('depositStatus' in p) continue;
+    if (p.dueDate) {
+      p.depositStatus = 'received';
+      p.turnaroundWeeks = 4;
+      const start = new Date(p.dueDate);
+      start.setDate(start.getDate() - 28);
+      p.depositReceivedAt = start.toISOString();
+    } else {
+      p.depositStatus = 'received';
+      p.depositReceivedAt = p.startDate ?? null;
+      p.turnaroundWeeks = null;
+    }
+    delete p.dueDate;
+  }
+  return data;
 }

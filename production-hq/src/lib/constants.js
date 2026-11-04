@@ -88,3 +88,16 @@ export const ATTENTION = {
   NEXT_ACTION_WITHIN_DAYS: 2,
   STALE_AFTER_DAYS: 10,
 };
+
+export const DEPOSIT = {
+  AWAITING: 'awaiting',
+  RECEIVED: 'received',
+};
+
+export const DEPOSIT_META = {
+  [DEPOSIT.AWAITING]: { label: 'Awaiting Deposit', dot: 'bg-amber-400' },
+  [DEPOSIT.RECEIVED]: { label: 'Deposit Received', dot: 'bg-emerald-400' },
+};
+
+// Quick picks for the agreed turnaround (any whole number of weeks is allowed).
+export const TURNAROUND_PRESETS = [2, 3, 4, 6, 8];

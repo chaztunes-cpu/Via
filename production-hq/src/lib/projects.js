@@ -2,8 +2,19 @@
 // what the dashboard shows. No React here, so they can be reused by
 // future pages and tested on their own.
 
-import { STATUS, ATTENTION, STATUS_ORDER } from './constants.js';
-import { daysUntil, daysSince, isSameMonth } from './dates.js';
+import { STATUS, ATTENTION, STATUS_ORDER, DEPOSIT } from './constants.js';
+import { daysUntil, daysSince, isSameMonth, addWeeks } from './dates.js';
+
+/**
+ * Project Due Date = Deposit Received Date + Agreed Turnaround.
+ * It is never stored, so it can't drift out of sync. Returns null while
+ * the deposit is pending or no turnaround is set.
+ */
+export function computeDueDate(project) {
+  if (project.depositStatus !== DEPOSIT.RECEIVED) return null;
+  if (!project.depositReceivedAt || !project.turnaroundWeeks) return null;
+  return addWeeks(project.depositReceivedAt, project.turnaroundWeeks);
+}
 
 /** Attach client and chronological update history to each project. */
 export function buildProjectViews({ clients, projects, updates }) {
@@ -21,6 +32,8 @@ export function buildProjectViews({ clients, projects, updates }) {
     const latestUpdate = history[history.length - 1] ?? null;
     return {
       ...p,
+      dueDate: computeDueDate(p),
+      awaitingDeposit: p.depositStatus !== DEPOSIT.RECEIVED,
       client: clientById.get(p.clientId) ?? null,
       updates: history,
       latestUpdate,

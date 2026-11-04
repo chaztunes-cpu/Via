@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { useData } from '../../data/DataProvider.jsx';
-import { SERVICE, SERVICE_META, STATUS } from '../../lib/constants.js';
-import { fromDateInput } from '../../lib/dates.js';
-import { findClientByName } from '../../lib/projects.js';
+import { SERVICE, SERVICE_META, STATUS, DEPOSIT } from '../../lib/constants.js';
+import { fromDateInput, todayInput } from '../../lib/dates.js';
+import { computeDueDate, findClientByName } from '../../lib/projects.js';
+import TimelineFields from './TimelineFields.jsx';
+import ProjectDue from './ProjectDue.jsx';
 import SlideOver from '../ui/SlideOver.jsx';
 import Select from '../ui/Select.jsx';
 import Button from '../ui/Button.jsx';
@@ -19,7 +21,9 @@ const EMPTY = {
   title: '',
   serviceType: SERVICE.GHOST,
   status: STATUS.NOT_STARTED,
-  dueDate: '',
+  depositStatus: DEPOSIT.AWAITING,
+  depositDate: '',
+  turnaroundWeeks: 4,
   nextAction: '',
   nextActionDue: '',
   firstUpdate: '',
@@ -52,6 +56,20 @@ function NewProjectForm({ onClose, onCreated }) {
   }, [clients, projects]);
 
   const isNewClient = form.clientId === NEW_CLIENT;
+  const received = form.depositStatus === DEPOSIT.RECEIVED;
+  const previewDue = computeDueDate({
+    depositStatus: form.depositStatus,
+    depositReceivedAt: fromDateInput(form.depositDate),
+    turnaroundWeeks: form.turnaroundWeeks,
+  });
+
+  const changeTimeline = (patch) =>
+    setForm((f) => {
+      const next = { ...f, ...patch };
+      // Default the deposit date to today when the deposit is marked received.
+      if (patch.depositStatus === DEPOSIT.RECEIVED && !f.depositDate) next.depositDate = todayInput();
+      return next;
+    });
   const existingMatch = isNewClient ? findClientByName(clients, form.newClientName) : null;
 
   const submit = async (e) => {
@@ -71,7 +89,9 @@ function NewProjectForm({ onClose, onCreated }) {
       title: form.title,
       serviceType: form.serviceType,
       status: form.status,
-      dueDate: fromDateInput(form.dueDate),
+      depositStatus: form.depositStatus,
+      depositReceivedAt: form.depositStatus === DEPOSIT.RECEIVED ? fromDateInput(form.depositDate) : null,
+      turnaroundWeeks: form.turnaroundWeeks,
       nextAction: form.nextAction,
       nextActionDue: form.nextAction.trim() ? fromDateInput(form.nextActionDue) : null,
       firstUpdate: form.firstUpdate,
@@ -136,12 +156,21 @@ function NewProjectForm({ onClose, onCreated }) {
           </Field>
         </div>
 
-        <Field id="np-due" label="Delivery date" hint="Optional">
-          <DateInput id="np-due" value={form.dueDate} onChange={(e) => set('dueDate')(e.target.value)} />
-        </Field>
+        <div className="flex flex-col gap-3">
+          <TimelineFields
+            idPrefix="np"
+            depositStatus={form.depositStatus}
+            depositDate={form.depositDate}
+            turnaroundWeeks={form.turnaroundWeeks}
+            onChange={changeTimeline}
+          />
+          <Field label="Project due" hint={received ? 'Deposit date + agreed turnaround' : 'Calculated once the deposit is received'}>
+            <ProjectDue dueDate={previewDue} awaitingDeposit={!received} />
+          </Field>
+        </div>
 
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-          <Field id="np-next" label="Next action" hint="Optional">
+          <Field id="np-next" label="Next action" hint="Optional. Its due date is separate from the project due date.">
             <TextInput
               id="np-next"
               value={form.nextAction}

@@ -5,12 +5,14 @@ import { fromDateInput, toDateInput } from '../../lib/dates.js';
 import { getClientProjects } from '../../lib/projects.js';
 import SlideOver from '../ui/SlideOver.jsx';
 import ClientAvatar from '../ui/ClientAvatar.jsx';
-import { Field, FieldLabel, DateInput } from '../ui/Field.jsx';
+import { Field, FieldLabel } from '../ui/Field.jsx';
 import { StatusDot } from '../ui/StatusBadge.jsx';
 import StatusSelect from './StatusSelect.jsx';
 import NextActionEditor from './NextActionEditor.jsx';
 import UpdateComposer from './UpdateComposer.jsx';
 import UpdateItem from './UpdateItem.jsx';
+import TimelineFields from './TimelineFields.jsx';
+import ProjectDue from './ProjectDue.jsx';
 
 function CloseButton({ onClose }) {
   return (
@@ -75,17 +77,24 @@ function PanelContent({ project, onClose, onOpenProject }) {
       </header>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="grid grid-cols-2 gap-3 border-b border-line px-5 py-4">
-          <Field id="panel-status" label="Status">
-            <StatusSelect id="panel-status" value={project.status} onChange={(status) => save({ status })} />
-          </Field>
-          <Field id="panel-delivery" label="Delivery date">
-            <DateInput
-              id="panel-delivery"
-              value={toDateInput(project.dueDate)}
-              onChange={(e) => save({ dueDate: fromDateInput(e.target.value) })}
-            />
-          </Field>
+        <div className="flex flex-col gap-4 border-b border-line px-5 py-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Field id="panel-status" label="Status">
+              <StatusSelect id="panel-status" value={project.status} onChange={(status) => save({ status })} />
+            </Field>
+            <Field label="Project due">
+              <ProjectDue dueDate={project.dueDate} awaitingDeposit={project.awaitingDeposit} />
+            </Field>
+          </div>
+          <TimelineFields
+            idPrefix="panel"
+            depositStatus={project.depositStatus}
+            depositDate={toDateInput(project.depositReceivedAt)}
+            turnaroundWeeks={project.turnaroundWeeks}
+            onChange={({ depositDate, ...rest }) =>
+              save(depositDate ? { ...rest, depositReceivedAt: fromDateInput(depositDate) } : rest)
+            }
+          />
         </div>
 
         <div className="border-b border-line px-5 py-4">

@@ -84,3 +84,19 @@ export function formatDayName(date, now = new Date()) {
   if (new Date(date).getFullYear() !== now.getFullYear()) opts.year = 'numeric';
   return new Date(date).toLocaleDateString('en-US', opts);
 }
+
+/** Same time of day, `weeks` calendar weeks later (safe across daylight-saving changes). */
+export function addWeeks(date, weeks) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + weeks * 7);
+  return d.toISOString();
+}
+
+/** Today as "YYYY-MM-DD". */
+export function todayInput() {
+  return toDateInput(new Date().toISOString());
+}
+
+export function formatLongDate(date) {
+  return new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}

@@ -7,7 +7,8 @@
 
 import * as sample from './sampleData.js';
 import { loadStore, saveStore } from './localStore.js';
-import { STATUS } from '../lib/constants.js';
+import { STATUS, DEPOSIT } from '../lib/constants.js';
+import { todayInput, fromDateInput } from '../lib/dates.js';
 
 // Three separate record types, like three database tables.
 let db = loadStore() ?? structuredClone({ clients: sample.clients, projects: sample.projects, updates: sample.updates });
@@ -63,7 +64,31 @@ export async function deleteUpdate(updateId) {
 
 // ── Projects ────────────────────────────────────────────────────────
 
-const EDITABLE_PROJECT_FIELDS = ['title', 'serviceType', 'status', 'dueDate', 'nextAction', 'nextActionDue'];
+const EDITABLE_PROJECT_FIELDS = [
+  'title',
+  'serviceType',
+  'status',
+  'depositStatus',
+  'depositReceivedAt',
+  'turnaroundWeeks',
+  'nextAction',
+  'nextActionDue',
+];
+
+/**
+ * Keeps the deposit fields consistent: a received deposit always has a
+ * date (today if none given), and a pending deposit has none.
+ */
+function normalizeDeposit(project) {
+  if (project.depositStatus === DEPOSIT.RECEIVED) {
+    project.depositReceivedAt ??= fromDateInput(todayInput());
+  } else {
+    project.depositStatus = DEPOSIT.AWAITING;
+    project.depositReceivedAt = null;
+  }
+  const weeks = Number(project.turnaroundWeeks);
+  project.turnaroundWeeks = Number.isFinite(weeks) && weeks > 0 ? Math.round(weeks) : null;
+}
 
 export async function updateProject(projectId, patch) {
   const project = db.projects.find((p) => p.id === projectId);
@@ -71,6 +96,7 @@ export async function updateProject(projectId, patch) {
   for (const key of EDITABLE_PROJECT_FIELDS) {
     if (key in patch) project[key] = patch[key];
   }
+  normalizeDeposit(project);
   if ('status' in patch) {
     project.completedAt = patch.status === STATUS.COMPLETED ? project.completedAt ?? new Date().toISOString() : null;
   }
@@ -94,11 +120,14 @@ export async function createProject({ clientId, newClientName, firstUpdate, ...f
     serviceType: fields.serviceType,
     status: fields.status ?? STATUS.NOT_STARTED,
     startDate: new Date().toISOString(),
-    dueDate: fields.dueDate ?? null,
+    depositStatus: fields.depositStatus ?? DEPOSIT.AWAITING,
+    depositReceivedAt: fields.depositReceivedAt ?? null,
+    turnaroundWeeks: fields.turnaroundWeeks ?? null,
     nextAction: fields.nextAction?.trim() || null,
     nextActionDue: fields.nextActionDue ?? null,
     completedAt: null,
   };
+  normalizeDeposit(project);
   db.projects.push(project);
   persist();
   if (firstUpdate?.trim()) await addUpdate(project.id, firstUpdate);

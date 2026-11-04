@@ -43,14 +43,14 @@ export default function ProjectRow({ project }) {
             {latestUpdate?.body ?? 'No updates yet.'}
           </p>
           <div className="hidden shrink-0 sm:block">
-            <DueDate date={project.dueDate} />
+            <DueDate date={project.dueDate} pendingDeposit={project.awaitingDeposit} />
           </div>
         </div>
 
         {/* Mobile: status and deadline under the text */}
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 sm:hidden">
           <StatusBadge status={project.status} compact />
-          <DueDate date={project.dueDate} />
+          <DueDate date={project.dueDate} pendingDeposit={project.awaitingDeposit} />
         </div>
       </div>
 

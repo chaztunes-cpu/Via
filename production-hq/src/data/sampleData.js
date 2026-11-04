@@ -1,13 +1,15 @@
 // Sample data shaped like the future Supabase tables:
 //   clients  (id, name, contact_name, email)
-//   projects (id, client_id, title, service_type, status, start_date, due_date,
+//   projects (id, client_id, title, service_type, status, start_date,
+//             deposit_status, deposit_received_at, turnaround_weeks,
 //             next_action, next_action_due, completed_at)
+// The project due date is not stored: it is deposit_received_at + turnaround_weeks.
 //   updates  (id, project_id, body, created_at, edited_at)
 // One client can have many projects; each project has its own update log.
 // Dates are generated relative to "now" so the sample always looks current.
 // Replace this file (via src/data/api.js) when the database is connected.
 
-import { STATUS, SERVICE } from '../lib/constants.js';
+import { STATUS, SERVICE, DEPOSIT } from '../lib/constants.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 const now = new Date();
@@ -37,23 +39,23 @@ export const clients = [
 ];
 
 export const projects = [
-  { id: 'p1', clientId: 'c1', title: 'Midnight Static', serviceType: SERVICE.GHOST, status: STATUS.IN_PROGRESS, startDate: daysAgo(21), dueDate: daysFromNow(5), nextAction: 'Finish mixdown and send V3', nextActionDue: daysFromNow(3) },
-  { id: 'p2', clientId: 'c2', title: 'Glass Houses (VIP Mix)', serviceType: SERVICE.REMIX, status: STATUS.AWAITING_FEEDBACK, startDate: daysAgo(18), dueDate: daysFromNow(12), nextAction: 'Follow up with the label if no notes by Monday', nextActionDue: daysFromNow(4) },
-  { id: 'p3', clientId: 'c3', title: 'Low Tide', serviceType: SERVICE.FINISHING, status: STATUS.REVISIONS, startDate: daysAgo(30), dueDate: daysFromNow(3), nextAction: 'Apply revision notes and send mix v2', nextActionDue: daysFromNow(1) },
-  { id: 'p4', clientId: 'c4', title: 'Afterglow EP — Track 2', serviceType: SERVICE.ORIGINAL, status: STATUS.IN_PROGRESS, startDate: daysAgo(40), dueDate: daysFromNow(24), nextAction: 'Record topline with Kairo (Friday)', nextActionDue: daysFromNow(2) },
-  { id: 'p5', clientId: 'c5', title: 'Parallel Lines', serviceType: SERVICE.GHOST, status: STATUS.READY_FOR_DELIVERY, startDate: daysAgo(35), dueDate: daysFromNow(2), nextAction: 'Export final stems and deliver', nextActionDue: daysFromNow(0) },
-  { id: 'p6', clientId: 'c6', title: 'Paper Moons', serviceType: SERVICE.FINISHING, status: STATUS.NOT_STARTED, startDate: daysAgo(6), dueDate: daysFromNow(19), nextAction: 'Chase Ezra for the session files', nextActionDue: daysAgo(1) },
-  { id: 'p7', clientId: 'c7', title: 'Northern Lights (Remix)', serviceType: SERVICE.REMIX, status: STATUS.IN_PROGRESS, startDate: daysAgo(28), dueDate: null, nextAction: 'Finish arrangement', nextActionDue: null },
-  { id: 'p8', clientId: 'c8', title: 'Velvet Hour', serviceType: SERVICE.ORIGINAL, status: STATUS.AWAITING_FEEDBACK, startDate: daysAgo(25), dueDate: daysFromNow(9), nextAction: 'Wait for client feedback', nextActionDue: null },
-  { id: 'p9', clientId: 'c9', title: 'Signal Fire', serviceType: SERVICE.GHOST, status: STATUS.ON_HOLD, startDate: daysAgo(50), dueDate: null, nextAction: 'Check in about the Q1 schedule', nextActionDue: daysFromNow(40) },
-  { id: 'p10', clientId: 'c1', title: 'Silver Lining', serviceType: SERVICE.GHOST, status: STATUS.REVISIONS, startDate: daysAgo(14), dueDate: daysFromNow(15), nextAction: 'Make requested drop changes', nextActionDue: daysFromNow(4) },
-  { id: 'p15', clientId: 'c1', title: 'Neon Rain', serviceType: SERVICE.GHOST, status: STATUS.AWAITING_FEEDBACK, startDate: daysAgo(20), dueDate: daysFromNow(21), nextAction: 'Follow up with Nova about the demo', nextActionDue: daysFromNow(0) },
-  { id: 'p11', clientId: 'c4', title: 'Afterglow EP — Track 3', serviceType: SERVICE.ORIGINAL, status: STATUS.NOT_STARTED, startDate: daysAgo(2), dueDate: daysFromNow(38), nextAction: 'Start once Track 2 vocals are recorded', nextActionDue: null },
+  { id: 'p1', clientId: 'c1', title: 'Midnight Static', serviceType: SERVICE.GHOST, status: STATUS.IN_PROGRESS, startDate: daysAgo(21), depositStatus: DEPOSIT.RECEIVED, depositReceivedAt: daysAgo(23, 17, 0), turnaroundWeeks: 4, nextAction: 'Finish mixdown and send V3', nextActionDue: daysFromNow(3) },
+  { id: 'p2', clientId: 'c2', title: 'Glass Houses (VIP Mix)', serviceType: SERVICE.REMIX, status: STATUS.AWAITING_FEEDBACK, startDate: daysAgo(18), depositStatus: DEPOSIT.RECEIVED, depositReceivedAt: daysAgo(16, 17, 0), turnaroundWeeks: 4, nextAction: 'Follow up with the label if no notes by Monday', nextActionDue: daysFromNow(4) },
+  { id: 'p3', clientId: 'c3', title: 'Low Tide', serviceType: SERVICE.FINISHING, status: STATUS.REVISIONS, startDate: daysAgo(30), depositStatus: DEPOSIT.RECEIVED, depositReceivedAt: daysAgo(25, 17, 0), turnaroundWeeks: 4, nextAction: 'Apply revision notes and send mix v2', nextActionDue: daysFromNow(1) },
+  { id: 'p4', clientId: 'c4', title: 'Afterglow EP — Track 2', serviceType: SERVICE.ORIGINAL, status: STATUS.IN_PROGRESS, startDate: daysAgo(40), depositStatus: DEPOSIT.RECEIVED, depositReceivedAt: daysAgo(18, 17, 0), turnaroundWeeks: 6, nextAction: 'Record topline with Kairo (Friday)', nextActionDue: daysFromNow(2) },
+  { id: 'p5', clientId: 'c5', title: 'Parallel Lines', serviceType: SERVICE.GHOST, status: STATUS.READY_FOR_DELIVERY, startDate: daysAgo(35), depositStatus: DEPOSIT.RECEIVED, depositReceivedAt: daysAgo(26, 17, 0), turnaroundWeeks: 4, nextAction: 'Export final stems and deliver', nextActionDue: daysFromNow(0) },
+  { id: 'p6', clientId: 'c6', title: 'Paper Moons', serviceType: SERVICE.FINISHING, status: STATUS.NOT_STARTED, startDate: daysAgo(6), depositStatus: DEPOSIT.RECEIVED, depositReceivedAt: daysAgo(6, 17, 0), turnaroundWeeks: 3, nextAction: 'Chase Ezra for the session files', nextActionDue: daysAgo(1) },
+  { id: 'p7', clientId: 'c7', title: 'Northern Lights (Remix)', serviceType: SERVICE.REMIX, status: STATUS.IN_PROGRESS, startDate: daysAgo(28), depositStatus: DEPOSIT.RECEIVED, depositReceivedAt: daysAgo(28, 17, 0), turnaroundWeeks: null, nextAction: 'Finish arrangement', nextActionDue: null },
+  { id: 'p8', clientId: 'c8', title: 'Velvet Hour', serviceType: SERVICE.ORIGINAL, status: STATUS.AWAITING_FEEDBACK, startDate: daysAgo(25), depositStatus: DEPOSIT.RECEIVED, depositReceivedAt: daysAgo(19, 17, 0), turnaroundWeeks: 4, nextAction: 'Wait for client feedback', nextActionDue: null },
+  { id: 'p9', clientId: 'c9', title: 'Signal Fire', serviceType: SERVICE.GHOST, status: STATUS.ON_HOLD, startDate: daysAgo(50), depositStatus: DEPOSIT.RECEIVED, depositReceivedAt: daysAgo(50, 17, 0), turnaroundWeeks: null, nextAction: 'Check in about the Q1 schedule', nextActionDue: daysFromNow(40) },
+  { id: 'p10', clientId: 'c1', title: 'Silver Lining', serviceType: SERVICE.GHOST, status: STATUS.REVISIONS, startDate: daysAgo(14), depositStatus: DEPOSIT.RECEIVED, depositReceivedAt: daysAgo(13, 17, 0), turnaroundWeeks: 4, nextAction: 'Make requested drop changes', nextActionDue: daysFromNow(4) },
+  { id: 'p15', clientId: 'c1', title: 'Neon Rain', serviceType: SERVICE.GHOST, status: STATUS.AWAITING_FEEDBACK, startDate: daysAgo(20), depositStatus: DEPOSIT.RECEIVED, depositReceivedAt: daysAgo(7, 17, 0), turnaroundWeeks: 4, nextAction: 'Follow up with Nova about the demo', nextActionDue: daysFromNow(0) },
+  { id: 'p11', clientId: 'c4', title: 'Afterglow EP — Track 3', serviceType: SERVICE.ORIGINAL, status: STATUS.NOT_STARTED, startDate: daysAgo(2), depositStatus: DEPOSIT.AWAITING, depositReceivedAt: null, turnaroundWeeks: 6, nextAction: 'Start once Track 2 vocals are recorded', nextActionDue: null },
 
   // Completed
-  { id: 'p12', clientId: 'c2', title: 'Coastline', serviceType: SERVICE.FINISHING, status: STATUS.COMPLETED, startDate: daysAgo(30), dueDate: daysAgo(2), completedAt: daysAgo(2, 15, 40) },
-  { id: 'p13', clientId: 'c5', title: 'Daybreak', serviceType: SERVICE.GHOST, status: STATUS.COMPLETED, startDate: daysAgo(45), dueDate: daysAgo(1), completedAt: daysAgo(1, 11, 5) },
-  { id: 'p14', clientId: 'c7', title: 'Open Water', serviceType: SERVICE.REMIX, status: STATUS.COMPLETED, startDate: daysAgo(60), dueDate: daysAgo(20), completedAt: daysAgo(21, 18, 0) },
+  { id: 'p12', clientId: 'c2', title: 'Coastline', serviceType: SERVICE.FINISHING, status: STATUS.COMPLETED, startDate: daysAgo(30), depositStatus: DEPOSIT.RECEIVED, depositReceivedAt: daysAgo(30, 17, 0), turnaroundWeeks: 4, completedAt: daysAgo(2, 15, 40) },
+  { id: 'p13', clientId: 'c5', title: 'Daybreak', serviceType: SERVICE.GHOST, status: STATUS.COMPLETED, startDate: daysAgo(45), depositStatus: DEPOSIT.RECEIVED, depositReceivedAt: daysAgo(43, 17, 0), turnaroundWeeks: 6, completedAt: daysAgo(1, 11, 5) },
+  { id: 'p14', clientId: 'c7', title: 'Open Water', serviceType: SERVICE.REMIX, status: STATUS.COMPLETED, startDate: daysAgo(60), depositStatus: DEPOSIT.RECEIVED, depositReceivedAt: daysAgo(76, 17, 0), turnaroundWeeks: 8, completedAt: daysAgo(21, 18, 0) },
 ];
 
 export const updates = [
@@ -102,7 +104,7 @@ export const updates = [
   { id: 'u26', projectId: 'p15', createdAt: daysAgo(5, 21, 10), body: 'Sent full demo (v1). Nova said she\'d listen over the weekend.' },
 
   // p11 — Afterglow EP Track 3
-  { id: 'u21', projectId: 'p11', createdAt: daysAgo(2, 15, 0), body: 'Added to the EP schedule. Starting after Track 2 vocals are recorded.' },
+  { id: 'u21', projectId: 'p11', createdAt: daysAgo(2, 15, 0), body: 'Added to the EP schedule and sent the deposit invoice. Starting after Track 2 vocals are recorded.' },
 
   // Completed
   { id: 'u22', projectId: 'p12', createdAt: daysAgo(2, 15, 40), body: 'Final master delivered with WAV + MP3. Invoice sent.' },

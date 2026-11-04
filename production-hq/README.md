@@ -11,6 +11,7 @@ Changes you make (updates, next actions, new projects) are saved in your browser
 
 - **Quick updates.** Click any project to open its panel on the right. Type an update and press **Save Update** (or Ctrl/⌘ + Enter). Every update is timestamped, listed newest first, and can be edited or deleted. The project jumps to the top of "Recently updated".
 - **Status and Next Action.** Status is where the project stands (In Progress, Revisions…). Next Action is the specific next task, with an optional due date. Both are edited in the panel. Rows show the next action on the client line.
+- **Deposit and turnaround.** Each project has a deposit status (Awaiting Deposit / Deposit Received), the date the deposit arrived (defaults to today) and an agreed turnaround in weeks. The **Project Due Date is calculated**: deposit date + turnaround (e.g. Nov 4 + 4 weeks = Dec 2). Until the deposit is received it shows "Pending deposit" and the project can't be overdue. All three can be changed later in the project panel and the due date updates everywhere. The Next Action due date stays a separate, manually picked date.
 - **Several projects per client.** New Project lets you pick an existing client or add a new one. Typing a name that already exists (in any capitalisation) reuses that client instead of creating a duplicate. The panel lists the client's other projects.
 
 ## Run it
@@ -46,14 +47,14 @@ src/
 ```
 
 Data model: **clients** → **projects** (one client, many projects) → **updates** (a dated, chronological log per project, like the rows under each client in the old Google Sheet).
-Each project has its own name, service type, status, next action (+ due date), delivery date and update log. `fetchClientWithProjects()` in `api.js` and `getClientProjects()` in `lib/projects.js` are ready for future client profile pages.
+Each project has its own name, service type, status, deposit status and date, turnaround (weeks), next action (+ due date) and update log. The project due date is never stored; `computeDueDate()` in `lib/projects.js` works it out, so it can't fall out of sync. `fetchClientWithProjects()` in `api.js` and `getClientProjects()` in `lib/projects.js` are ready for future client profile pages.
 
 ## Needs Attention rules
 
 Completed and On Hold projects never appear. Otherwise a project shows up when (thresholds are in `lib/constants.js`):
 
 1. Its Next Action is overdue or due within 2 days (shown first)
-2. Its delivery date is overdue or within 7 days
+2. Its project due date is overdue or within 7 days (never while awaiting a deposit)
 3. Its status is Ready for Delivery
 4. Its status is Revisions
 5. It hasn't been updated in 10+ days
