@@ -57,3 +57,30 @@ export function isSameMonth(a, b) {
   const y = new Date(b);
   return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth();
 }
+
+const pad = (n) => String(n).padStart(2, '0');
+
+/** ISO timestamp → "YYYY-MM-DD" for <input type="date">. */
+export function toDateInput(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** "YYYY-MM-DD" → ISO timestamp (5 PM local), or null when empty. */
+export function fromDateInput(value) {
+  if (!value) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  return new Date(y, m - 1, d, 17, 0, 0, 0).toISOString();
+}
+
+/** "Today", "Tomorrow", "Yesterday", or "Fri, Nov 6". */
+export function formatDayName(date, now = new Date()) {
+  const days = daysUntil(date, now);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  if (days === -1) return 'Yesterday';
+  const opts = { weekday: 'short', month: 'short', day: 'numeric' };
+  if (new Date(date).getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+  return new Date(date).toLocaleDateString('en-US', opts);
+}

@@ -20,7 +20,7 @@ export default function RecentActivity({ entries }) {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                   <Link
-                    to={`/projects/${u.project.id}`}
+                    to={{ search: `?project=${u.project.id}` }}
                     className="min-w-0 truncate text-sm text-zinc-200 hover:text-white"
                   >
                     <span className="font-medium">{u.project.client?.name}</span>

@@ -15,7 +15,7 @@ export function buildProjectViews({ clients, projects, updates }) {
   }
 
   return projects.map((p) => {
-    const history = (updatesByProject.get(p.id) ?? []).sort(
+    const history = [...(updatesByProject.get(p.id) ?? [])].sort(
       (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
     );
     const latestUpdate = history[history.length - 1] ?? null;
@@ -77,25 +77,34 @@ export function sortProjects(projects, sort) {
 }
 
 /**
- * Projects that need action from the producer, each with its reasons.
- * Awaiting client feedback and on-hold projects are the client's move,
- * so they never count as stale here (a close deadline still shows).
+ * Projects that need action from the producer, each with its reasons,
+ * most urgent first.
+ *  - Completed and On Hold projects never appear.
+ *  - Next Action deadlines (overdue or within 2 days) come first.
+ *  - Awaiting Client Feedback is the client's move, so those projects
+ *    only appear when a follow-up Next Action is due.
  */
 export function getNeedsAttention(projects, now = new Date()) {
   const items = [];
-  for (const p of projects.filter(isActive)) {
+  for (const p of projects) {
+    if (p.status === STATUS.COMPLETED || p.status === STATUS.ON_HOLD) continue;
     const reasons = [];
-    if (p.dueDate && p.status !== STATUS.ON_HOLD) {
-      const days = daysUntil(p.dueDate, now);
-      if (days < 0) reasons.push({ type: 'overdue', priority: 0 });
-      else if (days <= ATTENTION.DEADLINE_WITHIN_DAYS) reasons.push({ type: 'deadline', priority: 1 });
-    }
-    if (p.status === STATUS.READY_FOR_DELIVERY) reasons.push({ type: 'deliver', priority: 1 });
-    if (p.status === STATUS.REVISIONS) reasons.push({ type: 'revisions', priority: 2 });
 
-    const waitingOnClient = p.status === STATUS.AWAITING_FEEDBACK || p.status === STATUS.ON_HOLD;
-    if (!waitingOnClient && daysSince(p.lastUpdatedAt, now) >= ATTENTION.STALE_AFTER_DAYS) {
-      reasons.push({ type: 'stale', priority: 3 });
+    if (p.nextAction && p.nextActionDue) {
+      const days = daysUntil(p.nextActionDue, now);
+      if (days < 0) reasons.push({ type: 'actionOverdue', priority: 0, date: p.nextActionDue });
+      else if (days <= ATTENTION.NEXT_ACTION_WITHIN_DAYS) reasons.push({ type: 'actionDue', priority: 1, date: p.nextActionDue });
+    }
+
+    if (p.status !== STATUS.AWAITING_FEEDBACK) {
+      if (p.dueDate) {
+        const days = daysUntil(p.dueDate, now);
+        if (days < 0) reasons.push({ type: 'deliveryOverdue', priority: 0, date: p.dueDate });
+        else if (days <= ATTENTION.DEADLINE_WITHIN_DAYS) reasons.push({ type: 'deliveryDue', priority: 2, date: p.dueDate });
+      }
+      if (p.status === STATUS.READY_FOR_DELIVERY) reasons.push({ type: 'deliver', priority: 2 });
+      if (p.status === STATUS.REVISIONS) reasons.push({ type: 'revisions', priority: 3 });
+      if (daysSince(p.lastUpdatedAt, now) >= ATTENTION.STALE_AFTER_DAYS) reasons.push({ type: 'stale', priority: 4 });
     }
 
     if (reasons.length) {
@@ -103,11 +112,20 @@ export function getNeedsAttention(projects, now = new Date()) {
       items.push({ project: p, reasons });
     }
   }
-  return items.sort(
-    (a, b) =>
-      a.reasons[0].priority - b.reasons[0].priority ||
-      new Date(a.project.dueDate ?? 8.64e15) - new Date(b.project.dueDate ?? 8.64e15),
-  );
+  const when = (r) => (r.date ? new Date(r.date).getTime() : Number.MAX_SAFE_INTEGER);
+  return items.sort((a, b) => a.reasons[0].priority - b.reasons[0].priority || when(a.reasons[0]) - when(b.reasons[0]));
+}
+
+/** All projects for one client (for the "other projects" list and future client pages). */
+export function getClientProjects(projects, clientId) {
+  return projects.filter((p) => p.clientId === clientId);
+}
+
+/** Existing client whose name matches, ignoring case and extra spaces. */
+export function findClientByName(clients, name) {
+  const norm = (n = '') => n.trim().replace(/\s+/g, ' ').toLowerCase();
+  const target = norm(name);
+  return target ? clients.find((c) => norm(c.name) === target) ?? null : null;
 }
 
 export function getRecentActivity({ updates, projects }, limit = 5) {

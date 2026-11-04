@@ -1,7 +1,9 @@
 // Sample data shaped like the future Supabase tables:
 //   clients  (id, name, contact_name, email)
-//   projects (id, client_id, title, service_type, status, start_date, due_date, completed_at)
-//   updates  (id, project_id, body, created_at)
+//   projects (id, client_id, title, service_type, status, start_date, due_date,
+//             next_action, next_action_due, completed_at)
+//   updates  (id, project_id, body, created_at, edited_at)
+// One client can have many projects; each project has its own update log.
 // Dates are generated relative to "now" so the sample always looks current.
 // Replace this file (via src/data/api.js) when the database is connected.
 
@@ -35,17 +37,18 @@ export const clients = [
 ];
 
 export const projects = [
-  { id: 'p1', clientId: 'c1', title: 'Midnight Static', serviceType: SERVICE.GHOST, status: STATUS.IN_PROGRESS, startDate: daysAgo(21), dueDate: daysFromNow(5) },
-  { id: 'p2', clientId: 'c2', title: 'Glass Houses (VIP Mix)', serviceType: SERVICE.REMIX, status: STATUS.AWAITING_FEEDBACK, startDate: daysAgo(18), dueDate: daysFromNow(12) },
-  { id: 'p3', clientId: 'c3', title: 'Low Tide', serviceType: SERVICE.FINISHING, status: STATUS.REVISIONS, startDate: daysAgo(30), dueDate: daysFromNow(3) },
-  { id: 'p4', clientId: 'c4', title: 'Afterglow EP — Track 2', serviceType: SERVICE.ORIGINAL, status: STATUS.IN_PROGRESS, startDate: daysAgo(40), dueDate: daysFromNow(24) },
-  { id: 'p5', clientId: 'c5', title: 'Parallel Lines', serviceType: SERVICE.GHOST, status: STATUS.READY_FOR_DELIVERY, startDate: daysAgo(35), dueDate: daysFromNow(2) },
-  { id: 'p6', clientId: 'c6', title: 'Paper Moons', serviceType: SERVICE.FINISHING, status: STATUS.NOT_STARTED, startDate: daysAgo(6), dueDate: daysFromNow(19) },
-  { id: 'p7', clientId: 'c7', title: 'Northern Lights (Remix)', serviceType: SERVICE.REMIX, status: STATUS.IN_PROGRESS, startDate: daysAgo(28), dueDate: null },
-  { id: 'p8', clientId: 'c8', title: 'Velvet Hour', serviceType: SERVICE.ORIGINAL, status: STATUS.AWAITING_FEEDBACK, startDate: daysAgo(25), dueDate: daysFromNow(9) },
-  { id: 'p9', clientId: 'c9', title: 'Signal Fire', serviceType: SERVICE.GHOST, status: STATUS.ON_HOLD, startDate: daysAgo(50), dueDate: null },
-  { id: 'p10', clientId: 'c1', title: 'Silver Lining', serviceType: SERVICE.GHOST, status: STATUS.REVISIONS, startDate: daysAgo(14), dueDate: daysFromNow(15) },
-  { id: 'p11', clientId: 'c4', title: 'Afterglow EP — Track 3', serviceType: SERVICE.ORIGINAL, status: STATUS.NOT_STARTED, startDate: daysAgo(2), dueDate: daysFromNow(38) },
+  { id: 'p1', clientId: 'c1', title: 'Midnight Static', serviceType: SERVICE.GHOST, status: STATUS.IN_PROGRESS, startDate: daysAgo(21), dueDate: daysFromNow(5), nextAction: 'Finish mixdown and send V3', nextActionDue: daysFromNow(3) },
+  { id: 'p2', clientId: 'c2', title: 'Glass Houses (VIP Mix)', serviceType: SERVICE.REMIX, status: STATUS.AWAITING_FEEDBACK, startDate: daysAgo(18), dueDate: daysFromNow(12), nextAction: 'Follow up with the label if no notes by Monday', nextActionDue: daysFromNow(4) },
+  { id: 'p3', clientId: 'c3', title: 'Low Tide', serviceType: SERVICE.FINISHING, status: STATUS.REVISIONS, startDate: daysAgo(30), dueDate: daysFromNow(3), nextAction: 'Apply revision notes and send mix v2', nextActionDue: daysFromNow(1) },
+  { id: 'p4', clientId: 'c4', title: 'Afterglow EP — Track 2', serviceType: SERVICE.ORIGINAL, status: STATUS.IN_PROGRESS, startDate: daysAgo(40), dueDate: daysFromNow(24), nextAction: 'Record topline with Kairo (Friday)', nextActionDue: daysFromNow(2) },
+  { id: 'p5', clientId: 'c5', title: 'Parallel Lines', serviceType: SERVICE.GHOST, status: STATUS.READY_FOR_DELIVERY, startDate: daysAgo(35), dueDate: daysFromNow(2), nextAction: 'Export final stems and deliver', nextActionDue: daysFromNow(0) },
+  { id: 'p6', clientId: 'c6', title: 'Paper Moons', serviceType: SERVICE.FINISHING, status: STATUS.NOT_STARTED, startDate: daysAgo(6), dueDate: daysFromNow(19), nextAction: 'Chase Ezra for the session files', nextActionDue: daysAgo(1) },
+  { id: 'p7', clientId: 'c7', title: 'Northern Lights (Remix)', serviceType: SERVICE.REMIX, status: STATUS.IN_PROGRESS, startDate: daysAgo(28), dueDate: null, nextAction: 'Finish arrangement', nextActionDue: null },
+  { id: 'p8', clientId: 'c8', title: 'Velvet Hour', serviceType: SERVICE.ORIGINAL, status: STATUS.AWAITING_FEEDBACK, startDate: daysAgo(25), dueDate: daysFromNow(9), nextAction: 'Wait for client feedback', nextActionDue: null },
+  { id: 'p9', clientId: 'c9', title: 'Signal Fire', serviceType: SERVICE.GHOST, status: STATUS.ON_HOLD, startDate: daysAgo(50), dueDate: null, nextAction: 'Check in about the Q1 schedule', nextActionDue: daysFromNow(40) },
+  { id: 'p10', clientId: 'c1', title: 'Silver Lining', serviceType: SERVICE.GHOST, status: STATUS.REVISIONS, startDate: daysAgo(14), dueDate: daysFromNow(15), nextAction: 'Make requested drop changes', nextActionDue: daysFromNow(4) },
+  { id: 'p15', clientId: 'c1', title: 'Neon Rain', serviceType: SERVICE.GHOST, status: STATUS.AWAITING_FEEDBACK, startDate: daysAgo(20), dueDate: daysFromNow(21), nextAction: 'Follow up with Nova about the demo', nextActionDue: daysFromNow(0) },
+  { id: 'p11', clientId: 'c4', title: 'Afterglow EP — Track 3', serviceType: SERVICE.ORIGINAL, status: STATUS.NOT_STARTED, startDate: daysAgo(2), dueDate: daysFromNow(38), nextAction: 'Start once Track 2 vocals are recorded', nextActionDue: null },
 
   // Completed
   { id: 'p12', clientId: 'c2', title: 'Coastline', serviceType: SERVICE.FINISHING, status: STATUS.COMPLETED, startDate: daysAgo(30), dueDate: daysAgo(2), completedAt: daysAgo(2, 15, 40) },
@@ -93,6 +96,10 @@ export const updates = [
   // p10 — Silver Lining
   { id: 'u19', projectId: 'p10', createdAt: daysAgo(14, 13, 20), body: 'Started from Nova\'s demo. Keeping the piano motif, rebuilding everything else.' },
   { id: 'u20', projectId: 'p10', createdAt: daysAgo(2, 11, 30), body: 'Nova wants a different drop — less big-room, more minimal. Second revision round.' },
+
+  // p15 — Neon Rain
+  { id: 'u25', projectId: 'p15', createdAt: daysAgo(20, 12, 0), body: 'Third track for Nova this month. Darker, 140 BPM halftime. Brief and refs in Drive.' },
+  { id: 'u26', projectId: 'p15', createdAt: daysAgo(5, 21, 10), body: 'Sent full demo (v1). Nova said she\'d listen over the weekend.' },
 
   // p11 — Afterglow EP Track 3
   { id: 'u21', projectId: 'p11', createdAt: daysAgo(2, 15, 0), body: 'Added to the EP schedule. Starting after Track 2 vocals are recorded.' },

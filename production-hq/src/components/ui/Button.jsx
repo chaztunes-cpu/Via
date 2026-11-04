@@ -4,14 +4,19 @@ const variants = {
   ghost: 'text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05]',
 };
 
-export default function Button({ variant = 'primary', className = '', icon: Icon, children, ...props }) {
+const sizes = {
+  md: 'h-9 px-3.5 text-sm gap-1.5',
+  sm: 'h-7 px-2.5 text-xs gap-1',
+};
+
+export default function Button({ variant = 'primary', size = 'md', className = '', icon: Icon, children, ...props }) {
   return (
     <button
       type="button"
-      className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60 disabled:opacity-50 ${variants[variant]} ${className}`}
+      className={`inline-flex items-center justify-center rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60 disabled:opacity-50 ${sizes[size]} ${variants[variant]} ${className}`}
       {...props}
     >
-      {Icon && <Icon className="size-4 shrink-0" strokeWidth={2} />}
+      {Icon && <Icon className={size === 'sm' ? 'size-3.5 shrink-0' : 'size-4 shrink-0'} strokeWidth={2} />}
       {children}
     </button>
   );

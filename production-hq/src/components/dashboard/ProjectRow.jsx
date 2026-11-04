@@ -10,7 +10,7 @@ export default function ProjectRow({ project }) {
   const { client, latestUpdate } = project;
   return (
     <Link
-      to={`/projects/${project.id}`}
+      to={{ search: `?project=${project.id}` }}
       className="group flex gap-3.5 px-4 py-4 transition-colors hover:bg-white/[0.025] focus-visible:bg-white/[0.03] focus-visible:outline-none sm:px-5"
     >
       <ClientAvatar name={client?.name} />
@@ -23,6 +23,12 @@ export default function ProjectRow({ project }) {
               <span className="text-zinc-300">{client?.name}</span>
               <span className="mx-1.5 text-zinc-700">·</span>
               {SERVICE_META[project.serviceType].label}
+              {project.nextAction && (
+                <span className="hidden sm:inline">
+                  <span className="mx-1.5 text-zinc-700">·</span>
+                  <span className="text-zinc-600">Next:</span> <span className="text-zinc-400">{project.nextAction}</span>
+                </span>
+              )}
             </p>
           </div>
           <div className="hidden shrink-0 sm:block">

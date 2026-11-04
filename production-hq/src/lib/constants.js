@@ -85,5 +85,6 @@ export const SORT_OPTIONS = [
 // Thresholds used by the "Needs Attention" rules.
 export const ATTENTION = {
   DEADLINE_WITHIN_DAYS: 7,
+  NEXT_ACTION_WITHIN_DAYS: 2,
   STALE_AFTER_DAYS: 10,
 };
