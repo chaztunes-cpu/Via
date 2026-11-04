@@ -50,7 +50,7 @@ export function filterProjects(projects, { query = '', status = 'all', service =
     if (status !== 'all' && p.status !== status) return false;
     if (service !== 'all' && p.serviceType !== service) return false;
     if (!q) return true;
-    return [p.title, p.client?.name, p.latestUpdate?.body]
+    return [p.title, p.client?.name, p.nextAction, p.latestUpdate?.body]
       .filter(Boolean)
       .some((text) => text.toLowerCase().includes(q));
   });

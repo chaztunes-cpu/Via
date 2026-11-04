@@ -3,7 +3,9 @@
 Dashboard for managing music production projects: ghost production, original productions, track finishing and remixes.
 
 So far only the homepage (dashboard) is built. It runs on sample data. There's no database or login yet.
-Changes you make (updates, next actions, new projects) are saved in your browser's local storage until a database is connected.
+Changes you make (updates, next actions, new projects) are saved in your browser's local storage, so they survive a refresh. To start over with the sample data, clear this site's data in your browser.
+
+**Connecting Supabase later:** create `clients`, `projects` and `project_updates` tables matching the fields in `sampleData.js`, then rewrite the functions in `api.js` as Supabase queries and stop importing `localStore.js`. Nothing in the UI needs to change.
 
 ## What you can do on the dashboard
 
@@ -27,6 +29,7 @@ src/
   data/
     sampleData.js     Sample clients, projects and updates (shaped like future Supabase tables)
     api.js            The only place the UI reads or saves data. Swap these functions for Supabase queries later.
+    localStore.js     Saves the records in this browser (localStorage). The only file that touches storage.
     DataProvider.jsx  Holds the data for the app and exposes actions (add/edit/delete update, edit project, create project)
   lib/
     constants.js      Statuses, service types, colours, sort options, "needs attention" thresholds

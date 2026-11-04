@@ -2,32 +2,18 @@
 // sample data directly. To connect Supabase later, replace each function
 // body with the matching query and keep the returned shapes the same.
 //
-// For now the data lives in memory and is saved to this browser's
-// localStorage so your test updates survive a page reload.
+// For now records are kept in memory and saved to the browser through
+// localStore.js, so changes survive a page refresh.
 
 import * as sample from './sampleData.js';
+import { loadStore, saveStore } from './localStore.js';
 import { STATUS } from '../lib/constants.js';
 
-const STORAGE_KEY = 'production-hq:data:v2';
-
-let db = load();
-
-function load() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved?.clients && saved?.projects && saved?.updates) return saved;
-  } catch {
-    // Storage unavailable or corrupt: fall back to the sample data.
-  }
-  return structuredClone({ clients: sample.clients, projects: sample.projects, updates: sample.updates });
-}
+// Three separate record types, like three database tables.
+let db = loadStore() ?? structuredClone({ clients: sample.clients, projects: sample.projects, updates: sample.updates });
 
 function persist() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-  } catch {
-    // Private mode or full storage: keep working in memory.
-  }
+  saveStore(db);
 }
 
 function newId(prefix) {
