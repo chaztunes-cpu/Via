@@ -12,14 +12,24 @@ export default function UpdateItem({ update, isLast, onEdit, onDelete }) {
   const saveEdit = async () => {
     if (!draft.trim()) return;
     setBusy(true);
-    await onEdit(update.id, draft);
-    setBusy(false);
-    setMode('view');
+    try {
+      await onEdit(update.id, draft);
+      setMode('view');
+    } catch {
+      // Keep the edit box open with the text so it can be retried.
+    } finally {
+      setBusy(false);
+    }
   };
 
   const confirmDelete = async () => {
     setBusy(true);
-    await onDelete(update.id);
+    try {
+      await onDelete(update.id);
+    } catch {
+      setBusy(false);
+      setMode('view');
+    }
   };
 
   const onKeyDown = (e) => {
@@ -43,8 +53,9 @@ export default function UpdateItem({ update, isLast, onEdit, onDelete }) {
           <time dateTime={update.createdAt} className="text-xs text-zinc-500">
             {formatDateTime(update.createdAt)}
             {update.editedAt && <span className="text-zinc-600"> · edited</span>}
+            {update.pending && <span className="text-zinc-600"> · Saving…</span>}
           </time>
-          {mode === 'view' && (
+          {mode === 'view' && !update.pending && (
             <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
               <button
                 type="button"

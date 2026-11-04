@@ -82,20 +82,27 @@ function NewProjectForm({ onClose, onCreated }) {
     if (Object.keys(next).length) return;
 
     setSaving(true);
-    const project = await createProject({
-      // A typed name that matches an existing client reuses that client.
-      clientId: isNewClient ? existingMatch?.id : form.clientId,
-      newClientName: isNewClient && !existingMatch ? form.newClientName : undefined,
-      title: form.title,
-      serviceType: form.serviceType,
-      status: form.status,
-      depositStatus: form.depositStatus,
-      depositReceivedAt: form.depositStatus === DEPOSIT.RECEIVED ? fromDateInput(form.depositDate) : null,
-      turnaroundWeeks: form.turnaroundWeeks,
-      nextAction: form.nextAction,
-      nextActionDue: form.nextAction.trim() ? fromDateInput(form.nextActionDue) : null,
-      firstUpdate: form.firstUpdate,
-    });
+    let project;
+    try {
+      project = await createProject({
+        // A typed name that matches an existing client reuses that client.
+        clientId: isNewClient ? existingMatch?.id : form.clientId,
+        newClientName: isNewClient && !existingMatch ? form.newClientName : undefined,
+        title: form.title,
+        serviceType: form.serviceType,
+        status: form.status,
+        depositStatus: form.depositStatus,
+        depositReceivedAt: form.depositStatus === DEPOSIT.RECEIVED ? fromDateInput(form.depositDate) : null,
+        turnaroundWeeks: form.turnaroundWeeks,
+        nextAction: form.nextAction,
+        nextActionDue: form.nextAction.trim() ? fromDateInput(form.nextActionDue) : null,
+        firstUpdate: form.firstUpdate,
+      });
+    } catch (err) {
+      setErrors({ form: err.message });
+      setSaving(false);
+      return;
+    }
     onCreated(project.id);
   };
 
@@ -200,7 +207,8 @@ function NewProjectForm({ onClose, onCreated }) {
         </Field>
       </div>
 
-      <footer className="flex justify-end gap-2 border-t border-line px-5 py-3">
+      <footer className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">
+        {errors.form && <p className="mr-auto text-xs text-rose-400">{errors.form}</p>}
         <Button variant="ghost" onClick={onClose}>
           Cancel
         </Button>

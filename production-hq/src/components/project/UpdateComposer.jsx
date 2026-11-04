@@ -17,10 +17,15 @@ export default function UpdateComposer({ onSave }) {
   const save = async () => {
     if (!text.trim() || saving) return;
     setSaving(true);
-    await onSave(text);
-    setText('');
-    setSaving(false);
-    ref.current?.focus();
+    try {
+      await onSave(text);
+      setText('');
+    } catch {
+      // Saving failed: a message is shown and the text stays in the box.
+    } finally {
+      setSaving(false);
+      ref.current?.focus();
+    }
   };
 
   const onKeyDown = (e) => {

@@ -55,7 +55,9 @@ function PanelContent({ project, onClose, onOpenProject }) {
   const { projects, addUpdate, editUpdate, deleteUpdate, updateProject } = useData();
   const history = [...project.updates].reverse(); // newest first
   const otherProjects = getClientProjects(projects, project.clientId).filter((p) => p.id !== project.id);
-  const save = (patch) => updateProject(project.id, patch);
+  const saveOrThrow = (patch) => updateProject(project.id, patch);
+  // Status, deposit and turnaround save instantly; on failure the change is undone and a message shown.
+  const save = (patch) => saveOrThrow(patch).catch(() => {});
 
   return (
     <>
@@ -98,7 +100,7 @@ function PanelContent({ project, onClose, onOpenProject }) {
         </div>
 
         <div className="border-b border-line px-5 py-4">
-          <NextActionEditor project={project} onSave={save} />
+          <NextActionEditor project={project} onSave={saveOrThrow} />
         </div>
 
         <div className="border-b border-line px-5 py-4">

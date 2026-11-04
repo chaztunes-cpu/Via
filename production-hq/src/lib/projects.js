@@ -3,7 +3,7 @@
 // future pages and tested on their own.
 
 import { STATUS, ATTENTION, STATUS_ORDER, DEPOSIT } from './constants.js';
-import { daysUntil, daysSince, isSameMonth, addWeeks } from './dates.js';
+import { daysUntil, daysSince, isSameMonth, addWeeks, fromDateInput, todayInput } from './dates.js';
 
 /**
  * Project Due Date = Deposit Received Date + Agreed Turnaround.
@@ -14,6 +14,42 @@ export function computeDueDate(project) {
   if (project.depositStatus !== DEPOSIT.RECEIVED) return null;
   if (!project.depositReceivedAt || !project.turnaroundWeeks) return null;
   return addWeeks(project.depositReceivedAt, project.turnaroundWeeks);
+}
+
+/** Fields of a project that can be edited after it's created. */
+export const EDITABLE_PROJECT_FIELDS = [
+  'title',
+  'serviceType',
+  'status',
+  'depositStatus',
+  'depositReceivedAt',
+  'turnaroundWeeks',
+  'nextAction',
+  'nextActionDue',
+  'completedAt',
+];
+
+/**
+ * Applies the app's rules to a project after an edit:
+ *  - a received deposit always has a date (today if none was picked);
+ *    a pending deposit has none
+ *  - turnaround is a whole number of weeks, or empty
+ *  - the completed date is set when a project is marked Completed
+ */
+export function normalizeProject(project, now = new Date()) {
+  const p = { ...project };
+  if (p.depositStatus === DEPOSIT.RECEIVED) {
+    p.depositReceivedAt = p.depositReceivedAt ?? fromDateInput(todayInput());
+  } else {
+    p.depositStatus = DEPOSIT.AWAITING;
+    p.depositReceivedAt = null;
+  }
+  const weeks = Number(p.turnaroundWeeks);
+  p.turnaroundWeeks = p.turnaroundWeeks != null && Number.isFinite(weeks) && weeks > 0 ? Math.round(weeks) : null;
+  p.nextAction = p.nextAction?.trim() || null;
+  if (!p.nextAction) p.nextActionDue = null;
+  p.completedAt = p.status === STATUS.COMPLETED ? p.completedAt ?? now.toISOString() : null;
+  return p;
 }
 
 /** Attach client and chronological update history to each project. */
@@ -134,11 +170,15 @@ export function getClientProjects(projects, clientId) {
   return projects.filter((p) => p.clientId === clientId);
 }
 
+/** Names are compared without case or extra spaces, so "nova  kade" = "Nova Kade". */
+export function normalizeName(name = '') {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 /** Existing client whose name matches, ignoring case and extra spaces. */
 export function findClientByName(clients, name) {
-  const norm = (n = '') => n.trim().replace(/\s+/g, ' ').toLowerCase();
-  const target = norm(name);
-  return target ? clients.find((c) => norm(c.name) === target) ?? null : null;
+  const target = normalizeName(name);
+  return target ? clients.find((c) => normalizeName(c.name) === target) ?? null : null;
 }
 
 export function getRecentActivity({ updates, projects }, limit = 5) {

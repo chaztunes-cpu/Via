@@ -1,149 +1,26 @@
-// Data access layer. The UI only talks to these functions, never to the
-// sample data directly. To connect Supabase later, replace each function
-// body with the matching query and keep the returned shapes the same.
-//
-// For now records are kept in memory and saved to the browser through
-// localStore.js, so changes survive a page refresh.
+// The one place the UI gets data from. It forwards each call to the
+// live Supabase source or, in demo mode, to sample data in this browser.
+// Both offer the same functions and return the same shapes.
 
-import * as sample from './sampleData.js';
-import { loadStore, saveStore } from './localStore.js';
-import { STATUS, DEPOSIT } from '../lib/constants.js';
-import { todayInput, fromDateInput } from '../lib/dates.js';
+import { DEMO_MODE } from './config.js';
+import * as local from './localApi.js';
+import * as live from './supabaseApi.js';
 
-// Three separate record types, like three database tables.
-let db = loadStore() ?? structuredClone({ clients: sample.clients, projects: sample.projects, updates: sample.updates });
+const source = DEMO_MODE ? local : live;
 
-function persist() {
-  saveStore(db);
-}
+export const fetchAll = () => source.fetchAll();
+export const fetchClientWithProjects = (clientId) => source.fetchClientWithProjects(clientId);
+export const addUpdate = (projectId, body) => source.addUpdate(projectId, body);
+export const editUpdate = (updateId, body) => source.editUpdate(updateId, body);
+export const deleteUpdate = (updateId) => source.deleteUpdate(updateId);
+export const updateProject = (projectId, project) => source.updateProject(projectId, project);
+export const createProject = (input) => source.createProject(input);
 
-function newId(prefix) {
-  return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
-}
-
-/** Names are compared without case or extra spaces, so "nova  kade" = "Nova Kade". */
-export function normalizeName(name = '') {
-  return name.trim().replace(/\s+/g, ' ').toLowerCase();
-}
-
-// ── Reads ───────────────────────────────────────────────────────────
-
-export async function fetchAll() {
-  return structuredClone(db);
-}
-
-/** For the future client profile page: one client with all their projects. */
-export async function fetchClientWithProjects(clientId) {
-  const client = db.clients.find((c) => c.id === clientId);
-  if (!client) return null;
-  return structuredClone({ ...client, projects: db.projects.filter((p) => p.clientId === clientId) });
-}
-
-// ── Updates (the chronological log for each project) ───────────────
-
-export async function addUpdate(projectId, body) {
-  const update = { id: newId('u'), projectId, body: body.trim(), createdAt: new Date().toISOString(), editedAt: null };
-  db.updates.push(update);
-  persist();
-  return update;
-}
-
-export async function editUpdate(updateId, body) {
-  const update = db.updates.find((u) => u.id === updateId);
-  if (!update) throw new Error('Update not found');
-  update.body = body.trim();
-  update.editedAt = new Date().toISOString();
-  persist();
-  return update;
-}
-
-export async function deleteUpdate(updateId) {
-  db.updates = db.updates.filter((u) => u.id !== updateId);
-  persist();
-}
-
-// ── Projects ────────────────────────────────────────────────────────
-
-const EDITABLE_PROJECT_FIELDS = [
-  'title',
-  'serviceType',
-  'status',
-  'depositStatus',
-  'depositReceivedAt',
-  'turnaroundWeeks',
-  'nextAction',
-  'nextActionDue',
-];
-
-/**
- * Keeps the deposit fields consistent: a received deposit always has a
- * date (today if none given), and a pending deposit has none.
- */
-function normalizeDeposit(project) {
-  if (project.depositStatus === DEPOSIT.RECEIVED) {
-    project.depositReceivedAt ??= fromDateInput(todayInput());
-  } else {
-    project.depositStatus = DEPOSIT.AWAITING;
-    project.depositReceivedAt = null;
-  }
-  const weeks = Number(project.turnaroundWeeks);
-  project.turnaroundWeeks = Number.isFinite(weeks) && weeks > 0 ? Math.round(weeks) : null;
-}
-
-export async function updateProject(projectId, patch) {
-  const project = db.projects.find((p) => p.id === projectId);
-  if (!project) throw new Error('Project not found');
-  for (const key of EDITABLE_PROJECT_FIELDS) {
-    if (key in patch) project[key] = patch[key];
-  }
-  normalizeDeposit(project);
-  if ('status' in patch) {
-    project.completedAt = patch.status === STATUS.COMPLETED ? project.completedAt ?? new Date().toISOString() : null;
-  }
-  persist();
-  return project;
-}
-
-/**
- * Create a project for an existing client (clientId) or a new one
- * (newClientName). A new name that matches an existing client is
- * attached to that client instead of creating a duplicate.
- */
-export async function createProject({ clientId, newClientName, firstUpdate, ...fields }) {
-  const client = clientId ? db.clients.find((c) => c.id === clientId) : await createClient(newClientName);
-  if (!client) throw new Error('Choose a client for this project');
-
-  const project = {
-    id: newId('p'),
-    clientId: client.id,
-    title: fields.title.trim(),
-    serviceType: fields.serviceType,
-    status: fields.status ?? STATUS.NOT_STARTED,
-    startDate: new Date().toISOString(),
-    depositStatus: fields.depositStatus ?? DEPOSIT.AWAITING,
-    depositReceivedAt: fields.depositReceivedAt ?? null,
-    turnaroundWeeks: fields.turnaroundWeeks ?? null,
-    nextAction: fields.nextAction?.trim() || null,
-    nextActionDue: fields.nextActionDue ?? null,
-    completedAt: null,
-  };
-  normalizeDeposit(project);
-  db.projects.push(project);
-  persist();
-  if (firstUpdate?.trim()) await addUpdate(project.id, firstUpdate);
-  return project;
-}
-
-// ── Clients ─────────────────────────────────────────────────────────
-
-/** Returns the existing client when the name already exists. */
-export async function createClient(name) {
-  const clean = name?.trim().replace(/\s+/g, ' ');
-  if (!clean) throw new Error('Client name is required');
-  const existing = db.clients.find((c) => normalizeName(c.name) === normalizeName(clean));
-  if (existing) return existing;
-  const client = { id: newId('c'), name: clean, contactName: clean, email: '' };
-  db.clients.push(client);
-  persist();
-  return client;
-}
+// Live-only features (sign in, live sync, importing prototype data).
+export const getSession = () => live.getSession();
+export const onAuthChange = (callback) => live.onAuthChange(callback);
+export const signIn = (email, password) => live.signIn(email, password);
+export const signOut = () => live.signOut();
+export const subscribeToChanges = (onChange) => (DEMO_MODE ? () => {} : live.subscribeToChanges(onChange));
+export const importData = (source_, projectIds) => live.importData(source_, projectIds);
+export const friendlyError = (error) => (DEMO_MODE ? 'Something went wrong. Please try again.' : live.friendlyError(error));

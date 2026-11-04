@@ -20,9 +20,14 @@ export default function NextActionEditor({ project, onSave }) {
   const save = async () => {
     setSaving(true);
     const clean = text.trim();
-    await onSave({ nextAction: clean || null, nextActionDue: clean ? fromDateInput(due) : null });
-    setSaving(false);
-    setEditing(false);
+    try {
+      await onSave({ nextAction: clean || null, nextActionDue: clean ? fromDateInput(due) : null });
+      setEditing(false);
+    } catch {
+      // Stay in edit mode so nothing typed is lost.
+    } finally {
+      setSaving(false);
+    }
   };
 
   const onKeyDown = (e) => {

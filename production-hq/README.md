@@ -2,10 +2,10 @@
 
 Dashboard for managing music production projects: ghost production, original productions, track finishing and remixes.
 
-So far only the homepage (dashboard) is built. It runs on sample data. There's no database or login yet.
-Changes you make (updates, next actions, new projects) are saved in your browser's local storage, so they survive a refresh. To start over with the sample data, clear this site's data in your browser.
+The app runs in one of two modes:
 
-**Connecting Supabase later:** create `clients`, `projects` and `project_updates` tables matching the fields in `sampleData.js`, then rewrite the functions in `api.js` as Supabase queries and stop importing `localStore.js`. Nothing in the UI needs to change.
+- **Live** (normal): your data is stored in Supabase and you sign in with your account. Works on any device. Setup: [`docs/supabase-plan.md`](docs/supabase-plan.md), database: [`supabase/schema.sql`](supabase/schema.sql), going online: [`docs/hosting.md`](docs/hosting.md).
+- **Demo**: sample data saved only in this browser, no sign-in. Used by the shareable preview link, or when the Supabase settings in `.env` are missing (or `VITE_DEMO_MODE=true`).
 
 ## What you can do on the dashboard
 
@@ -21,7 +21,7 @@ npm install
 npm run dev
 ```
 
-Then open the address it prints (usually http://localhost:5173).
+Then open the address it prints (usually http://localhost:5173). To try it without Supabase, run `VITE_DEMO_MODE=true npm run dev`.
 
 ## How the code is organised
 
@@ -29,9 +29,12 @@ Then open the address it prints (usually http://localhost:5173).
 src/
   data/
     sampleData.js     Sample clients, projects and updates (shaped like future Supabase tables)
-    api.js            The only place the UI reads or saves data. Swap these functions for Supabase queries later.
-    localStore.js     Saves the records in this browser (localStorage). The only file that touches storage.
-    DataProvider.jsx  Holds the data for the app and exposes actions (add/edit/delete update, edit project, create project)
+    api.js            The only place the UI reads or saves data; forwards to the live or demo source
+    supabaseApi.js    Live source: Supabase tables, sign-in, live sync, import
+    localApi.js       Demo source: sample data in this browser
+    localStore.js     Browser storage for demo mode
+    config.js         Chooses live or demo mode
+    DataProvider.jsx  Holds the data; instant saves with undo on failure, live sync, cached first load
   lib/
     constants.js      Statuses, service types, colours, sort options, "needs attention" thresholds
     projects.js       Pure logic: joins, stats, filtering, sorting, needs-attention rules, recent activity
@@ -43,6 +46,8 @@ src/
     project/          Project slide-out panel (status, next action, updates) and the New Project form
   pages/
     Dashboard.jsx     The homepage
+    Settings.jsx      Account, backup/export, copy/import data
+    SignIn.jsx        Sign-in screen (live mode)
     ComingSoon.jsx    Placeholder for pages not built yet (All Projects, Clients, project pages, …)
 ```
 

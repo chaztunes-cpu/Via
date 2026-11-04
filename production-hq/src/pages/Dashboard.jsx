@@ -9,9 +9,11 @@ import NeedsAttention from '../components/dashboard/NeedsAttention.jsx';
 import RecentActivity from '../components/dashboard/RecentActivity.jsx';
 import ProjectPanel from '../components/project/ProjectPanel.jsx';
 import NewProjectPanel from '../components/project/NewProjectPanel.jsx';
+import DashboardSkeleton from '../components/dashboard/DashboardSkeleton.jsx';
+import Button from '../components/ui/Button.jsx';
 
 export default function Dashboard() {
-  const { loading, error, projects, updates } = useData();
+  const { loading, error, retry, projects, updates } = useData();
   const [searchParams, setSearchParams] = useSearchParams();
   const [newProjectOpen, setNewProjectOpen] = useState(false);
 
@@ -32,9 +34,15 @@ export default function Dashboard() {
       <DashboardHeader onNewProject={() => setNewProjectOpen(true)} />
 
       {error ? (
-        <p className="text-sm text-rose-400">Couldn't load projects.</p>
+        <div className="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-5">
+          <p className="text-sm text-zinc-300">Couldn’t load your projects.</p>
+          <p className="text-xs text-zinc-500">{error.message}</p>
+          <Button variant="secondary" size="sm" onClick={retry}>
+            Try again
+          </Button>
+        </div>
       ) : loading ? (
-        <p className="text-sm text-zinc-500">Loading…</p>
+        <DashboardSkeleton />
       ) : (
         <>
           <StatsGrid stats={stats} />
