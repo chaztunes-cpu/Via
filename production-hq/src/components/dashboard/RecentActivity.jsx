@@ -10,6 +10,7 @@ export default function RecentActivity({ entries }) {
         <SectionHeader title="Recent Activity" description="Latest updates across all projects" />
       </div>
       <Card className="px-4 py-4">
+        {entries.length === 0 && <p className="text-sm text-zinc-500">Updates you add to projects will appear here.</p>}
         <ol className="relative">
           {entries.map((u, i) => (
             <li key={u.id} className="relative flex gap-3 pb-5 last:pb-0">

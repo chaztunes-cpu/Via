@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { SearchX } from 'lucide-react';
+import { SearchX, Disc3 } from 'lucide-react';
 import { filterProjects, sortProjects } from '../../lib/projects.js';
 import Card, { SectionHeader } from '../ui/Card.jsx';
 import Button from '../ui/Button.jsx';
@@ -38,7 +38,13 @@ export default function ActiveProjects({ projects }) {
       <ProjectFilters filters={filters} onChange={setFilters} />
 
       <Card className="overflow-hidden">
-        {visible.length ? (
+        {projects.length === 0 ? (
+          <div className="flex flex-col items-center px-6 py-14 text-center">
+            <Disc3 className="size-5 text-zinc-600" />
+            <p className="mt-3 text-sm font-medium text-zinc-300">No active projects yet</p>
+            <p className="mt-1 text-xs text-zinc-500">Click New Project to add your first track.</p>
+          </div>
+        ) : visible.length ? (
           <ul className="divide-y divide-line">
             {visible.map((p) => (
               <li key={p.id}>
